@@ -1,0 +1,82 @@
+[
+	{
+		"feature": "render",
+		"caption": "A dot block in a note, drawn as a diagram. The colors come from the dark theme.",
+		"note": "Architecture.md",
+		"eval": "(async () => { const P = app.plugins.plugins['dot-diagrams']; const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); P.pro.signOut(); document.body.classList.remove('theme-light'); document.body.classList.add('theme-dark'); app.workspace.trigger('css-change'); const leaf = app.workspace.getLeaf(false); const st = leaf.getViewState(); await leaf.setViewState({ ...st, state: { ...st.state, mode: 'preview', source: false } }); await sleep(1500); return 'ok'; })()",
+		"wait": 1200
+	},
+	{
+		"feature": "theme",
+		"caption": "The same note on a light theme. Text, lines and fills change with the theme.",
+		"note": "Architecture.md",
+		"eval": "(async () => { const P = app.plugins.plugins['dot-diagrams']; const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); P.pro.signOut(); document.body.classList.remove('theme-dark'); document.body.classList.add('theme-light'); app.workspace.trigger('css-change'); const leaf = app.workspace.getLeaf(false); const st = leaf.getViewState(); await leaf.setViewState({ ...st, state: { ...st.state, mode: 'preview', source: false } }); await sleep(1500); return 'ok'; })()",
+		"after": "(async () => { const P = app.plugins.plugins['dot-diagrams']; const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); P.pro.signOut(); document.body.classList.remove('theme-light'); document.body.classList.add('theme-dark'); app.workspace.trigger('css-change'); const leaf = app.workspace.getLeaf(false); const st = leaf.getViewState(); await leaf.setViewState({ ...st, state: { ...st.state, mode: 'preview', source: false } }); await sleep(1500); return 'ok'; })()",
+		"wait": 1200
+	},
+	{
+		"feature": "error",
+		"caption": "A syntax error shows the line number, the message and the line.",
+		"note": "Syntax error.md",
+		"eval": "(async () => { const P = app.plugins.plugins['dot-diagrams']; const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); P.pro.signOut(); document.body.classList.remove('theme-light'); document.body.classList.add('theme-dark'); app.workspace.trigger('css-change'); const leaf = app.workspace.getLeaf(false); const st = leaf.getViewState(); await leaf.setViewState({ ...st, state: { ...st.state, mode: 'preview', source: false } }); await sleep(1500); return 'ok'; })()",
+		"wait": 1200
+	},
+	{
+		"feature": "engines",
+		"caption": "Two blocks in one note: the neato engine and the circo engine.",
+		"note": "Networks.md",
+		"eval": "(async () => { const P = app.plugins.plugins['dot-diagrams']; const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); P.pro.signOut(); document.body.classList.remove('theme-light'); document.body.classList.add('theme-dark'); app.workspace.trigger('css-change'); const leaf = app.workspace.getLeaf(false); const st = leaf.getViewState(); await leaf.setViewState({ ...st, state: { ...st.state, mode: 'preview', source: false } }); await sleep(1500); return 'ok'; })()",
+		"wait": 1200,
+		"zoom": 0.7
+	},
+	{
+		"feature": "links",
+		"caption": "Pro: every node of this map is a wikilink. Select a node to open its note.",
+		"note": "Project map.md",
+		"eval": "(async () => { const P = app.plugins.plugins['dot-diagrams']; const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); P.pro.opts.http = async () => ({ status: 200, json: { data: { viewer: { login: 'demo-reader' }, user: { sponsorshipForViewerAsSponsor: { isActive: true, isOneTimePayment: false, tier: { name: '$5 a month', monthlyPriceInCents: 500 } } } } } }); app.secretStorage.setSecret('dot-diagrams-github-token', 'gho_' + '0'.repeat(36)); await P.pro.refreshNow(); document.body.classList.remove('theme-light'); document.body.classList.add('theme-dark'); app.workspace.trigger('css-change'); const leaf = app.workspace.getLeaf(false); const st = leaf.getViewState(); await leaf.setViewState({ ...st, state: { ...st.state, mode: 'preview', source: false } }); await sleep(1500); return 'ok'; })()",
+		"after": "(async () => { app.plugins.plugins['dot-diagrams'].pro.signOut(); return 'ok'; })()",
+		"wait": 1200
+	},
+	{
+		"feature": "export",
+		"caption": "Pro: the exported SVG file in the vault, light on white, opened in Obsidian.",
+		"note": "Architecture.md",
+		"eval": "(async () => { const P = app.plugins.plugins['dot-diagrams']; const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); P.pro.opts.http = async () => ({ status: 200, json: { data: { viewer: { login: 'demo-reader' }, user: { sponsorshipForViewerAsSponsor: { isActive: true, isOneTimePayment: false, tier: { name: '$5 a month', monthlyPriceInCents: 500 } } } } } }); app.secretStorage.setSecret('dot-diagrams-github-token', 'gho_' + '0'.repeat(36)); await P.pro.refreshNow(); document.body.classList.remove('theme-light'); document.body.classList.add('theme-dark'); app.workspace.trigger('css-change'); const leaf = app.workspace.getLeaf(false); const st = leaf.getViewState(); await leaf.setViewState({ ...st, state: { ...st.state, mode: 'preview', source: false } }); await sleep(1500); const text = await app.vault.read(app.workspace.getActiveFile()); const m = /```dot\\n([\\s\\S]*?)```/.exec(text); const path = await P.exportBlock(m[1], 'Architecture.md', 'svg'); await sleep(500); const f = app.vault.getFileByPath(path); await app.workspace.getLeaf(false).openFile(f); await sleep(1200); return 'ok'; })()",
+		"after": "(async () => { app.plugins.plugins['dot-diagrams'].pro.signOut(); return 'ok'; })()",
+		"wait": 1500
+	},
+	{
+		"feature": "presets",
+		"caption": "Pro: a blueprint preset and a pastel preset with the twopi engine.",
+		"note": "Presets and engines.md",
+		"eval": "(async () => { const P = app.plugins.plugins['dot-diagrams']; const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); P.pro.opts.http = async () => ({ status: 200, json: { data: { viewer: { login: 'demo-reader' }, user: { sponsorshipForViewerAsSponsor: { isActive: true, isOneTimePayment: false, tier: { name: '$5 a month', monthlyPriceInCents: 500 } } } } } }); app.secretStorage.setSecret('dot-diagrams-github-token', 'gho_' + '0'.repeat(36)); await P.pro.refreshNow(); document.body.classList.remove('theme-light'); document.body.classList.add('theme-dark'); app.workspace.trigger('css-change'); const leaf = app.workspace.getLeaf(false); const st = leaf.getViewState(); await leaf.setViewState({ ...st, state: { ...st.state, mode: 'preview', source: false } }); await sleep(1500); return 'ok'; })()",
+		"after": "(async () => { app.plugins.plugins['dot-diagrams'].pro.signOut(); return 'ok'; })()",
+		"wait": 1200
+	},
+	{
+		"feature": "dot-diagrams",
+		"caption": "A diagram, a neato layout, a syntax error, then a Pro map whose nodes open notes.",
+		"frames": [
+			{
+				"note": "Architecture.md",
+				"eval": "(async () => { const P = app.plugins.plugins['dot-diagrams']; const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); P.pro.signOut(); document.body.classList.remove('theme-light'); document.body.classList.add('theme-dark'); app.workspace.trigger('css-change'); const leaf = app.workspace.getLeaf(false); const st = leaf.getViewState(); await leaf.setViewState({ ...st, state: { ...st.state, mode: 'preview', source: false } }); await sleep(1500); return 'ok'; })()",
+				"hold": 1800
+			},
+			{
+				"note": "Networks.md",
+				"eval": "(async () => { const P = app.plugins.plugins['dot-diagrams']; const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); P.pro.signOut(); document.body.classList.remove('theme-light'); document.body.classList.add('theme-dark'); app.workspace.trigger('css-change'); const leaf = app.workspace.getLeaf(false); const st = leaf.getViewState(); await leaf.setViewState({ ...st, state: { ...st.state, mode: 'preview', source: false } }); await sleep(1500); return 'ok'; })()",
+				"hold": 1800
+			},
+			{
+				"note": "Syntax error.md",
+				"eval": "(async () => { const P = app.plugins.plugins['dot-diagrams']; const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); P.pro.signOut(); document.body.classList.remove('theme-light'); document.body.classList.add('theme-dark'); app.workspace.trigger('css-change'); const leaf = app.workspace.getLeaf(false); const st = leaf.getViewState(); await leaf.setViewState({ ...st, state: { ...st.state, mode: 'preview', source: false } }); await sleep(1500); return 'ok'; })()",
+				"hold": 1500
+			},
+			{
+				"note": "Project map.md",
+				"eval": "(async () => { const P = app.plugins.plugins['dot-diagrams']; const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); P.pro.opts.http = async () => ({ status: 200, json: { data: { viewer: { login: 'demo-reader' }, user: { sponsorshipForViewerAsSponsor: { isActive: true, isOneTimePayment: false, tier: { name: '$5 a month', monthlyPriceInCents: 500 } } } } } }); app.secretStorage.setSecret('dot-diagrams-github-token', 'gho_' + '0'.repeat(36)); await P.pro.refreshNow(); document.body.classList.remove('theme-light'); document.body.classList.add('theme-dark'); app.workspace.trigger('css-change'); const leaf = app.workspace.getLeaf(false); const st = leaf.getViewState(); await leaf.setViewState({ ...st, state: { ...st.state, mode: 'preview', source: false } }); await sleep(1500); return 'ok'; })()",
+				"hold": 2000
+			}
+		]
+	}
+]

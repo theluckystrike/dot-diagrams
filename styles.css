@@ -1,0 +1,65 @@
+.dot-diagrams {
+	position: relative;
+	padding: var(--size-4-2) 0;
+	overflow-x: auto;
+}
+
+.dot-diagrams-svg {
+	display: block;
+	max-width: 100%;
+	height: auto;
+	margin: 0 auto;
+}
+
+.dot-diagrams-link {
+	cursor: pointer;
+}
+
+.dot-diagrams-link:hover text {
+	text-decoration: underline;
+}
+
+.dot-diagrams-toolbar {
+	position: absolute;
+	top: var(--size-4-1);
+	right: var(--size-4-1);
+	display: flex;
+	gap: var(--size-2-1);
+	opacity: 0;
+	transition: opacity 120ms ease;
+	z-index: 1;
+}
+
+.dot-diagrams:hover .dot-diagrams-toolbar,
+.dot-diagrams:focus-within .dot-diagrams-toolbar {
+	opacity: 1;
+}
+
+.dot-diagrams-note,
+.dot-diagrams-status {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	padding: var(--size-2-2) 0;
+}
+
+.dot-diagrams-error {
+	border: 1px solid var(--text-error);
+	border-radius: var(--radius-s);
+	padding: var(--size-4-2) var(--size-4-3);
+	color: var(--text-normal);
+}
+
+.dot-diagrams-error-title {
+	color: var(--text-error);
+	font-weight: var(--font-semibold);
+}
+
+.dot-diagrams-error-message {
+	margin: var(--size-2-2) 0;
+}
+
+.dot-diagrams-error-code {
+	display: block;
+	white-space: pre-wrap;
+	color: var(--text-muted);
+}
