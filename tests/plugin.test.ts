@@ -110,6 +110,22 @@ describe('plugin', () => {
 		expect(app.vault.getFiles().length).toBe(0);
 	});
 
+	it('copies a diagram as SVG, and a clipboard failure does not reject', async () => {
+		const app = App.createConfigured__({ files: {} });
+		const plugin = new DotDiagramsPlugin(app as never, manifest as never);
+		const writeText = vi.fn(() => Promise.resolve());
+		vi.stubGlobal('navigator', { clipboard: { writeText } });
+		try {
+			await plugin.copySvg('digraph { a -> b }', 'n.md');
+			expect(writeText).toHaveBeenCalledTimes(1);
+			expect(String(writeText.mock.calls[0])).toContain('<svg');
+			writeText.mockImplementation(() => Promise.reject(new Error('Write permission denied.')));
+			await expect(plugin.copySvg('digraph { a -> b }', 'n.md')).resolves.toBeUndefined();
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
+
 	describe('blockText', () => {
 		const load = async (files: Record<string, string>) => {
 			const app = App.createConfigured__({ files });

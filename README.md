@@ -1,6 +1,6 @@
 # DOT Diagrams
 
-DOT Diagrams draws Graphviz DOT code blocks as diagrams inside your notes. It works offline on desktop and on mobile, with no server and no installed Graphviz program. The layout engine is inside the plugin as WebAssembly, so your graph never leaves your device.
+DOT Diagrams draws Graphviz DOT code blocks as diagrams inside your notes. It draws offline, with no server and no installed Graphviz program. The layout engine is inside the plugin as WebAssembly, so your graph never leaves your device.
 
 You write a block with the language `dot` or `graphviz`. DOT Diagrams draws the graph as an SVG in reading view and in Live Preview. The colors follow your theme. If the graph has a mistake, the block shows the line number and the message.
 
@@ -40,13 +40,13 @@ Name a `.dot` or `.gv` file of your vault in a block, and the block draws it, an
 // file: graphs/build.dot
 ```
 
-The path starts at the vault root. A bare name or a link such as `[[build.dot]]` finds the file the way a link does. Put only comment lines in that block, such as `// engine:` and `// preset:` lines, which win over the file's own. A block with its own graph ignores the line. An error names the file and the line in it.
+The path starts at the vault root. A bare name or a link such as `[[build.dot]]` finds the file the way a link does. Put only comment lines in that block, such as `// engine:` and `// preset:` lines, which win over the file's own. A block with its own graph ignores the line. A Graphviz error names the file and the line in it.
 
 <img src="https://raw.githubusercontent.com/theluckystrike/dot-diagrams/HEAD/docs/file.png" alt="A note in reading view with the call graph that the plugin drew from the vault file call-graph.dot" width="720">
 
 ### Notes that open from nodes (Pro)
 
-With Pro, a node that is a wikilink opens its note when you select it. Hold Ctrl (Cmd on macOS) to open it in a new tab. Three forms work: a quoted node id, such as `"[[Architecture]]"` or `"[[Notes/Plan|Plan]]"`, a link in the URL attribute such as `URL="[[Architecture]]"`, and a link in a label such as `label="Read [[Syntax error]]"`. The node shows the note name or the alias. Without Pro, the same nodes show the name as plain text.
+With Pro, a node that is a wikilink opens its note when you select it. Hold Ctrl (Cmd on macOS) to open it in a new tab. Three forms work: a quoted node id, such as `"[[Architecture]]"` or `"[[Notes/Plan|Plan]]"`, a link in the URL attribute such as `URL="[[Architecture]]"`, and a link in a label such as `label="Read [[Syntax error]]"`. The node shows the note name or the alias, and it gets the `node [...]` defaults of the graph, such as `node [shape=box]`. A label or URL that you set on the node wins. Without Pro, the same nodes show the name as plain text.
 
 <img src="https://raw.githubusercontent.com/theluckystrike/dot-diagrams/HEAD/docs/links.png" alt="A project map where each node is the name of a note, shown with a pointer on one node" width="720">
 
@@ -77,7 +77,7 @@ To install by hand, copy `main.js`, `manifest.json` and `styles.css` from the la
 
 The first diagram of a session takes a moment longer, while the engine starts.
 
-Two comment lines set options for one block. Put them on their own lines, anywhere in the block:
+Comment lines set options for one block. Put them on their own lines, anywhere in the block:
 
 - `// engine: neato` chooses the layout engine.
 - `// preset: blueprint` chooses a style preset (Pro).
@@ -93,7 +93,7 @@ A line that starts with `#` or the form `/* engine: circo */` works too. The fir
 | Default style preset | Pro. The preset for blocks without a `// preset:` line. Empty means the theme colors. |
 | Show buttons above diagrams | Shows the Copy, Export SVG and Export PNG buttons on hover. On by default. |
 | Edge limit | A block with more edges is not drawn. From 50 to 20,000, default 300. |
-| PNG export scale | Pro. 1 to 4 pixels for each point of the diagram, default 2. |
+| PNG export scale | Pro. 1 to 4 times the size at 96 dpi, default 2. |
 
 The settings tab also has the Pro section: sign in, the status line and Refresh.
 
@@ -117,7 +117,7 @@ The Kroki plugin sends your block to a Kroki server, so it needs a network or a 
 
 ### How big is the plugin, and how fast is it?
 
-The plugin file `main.js` is 0.85 MB, and 0.82 MB of it is the Graphviz engine. Layout runs on the main thread, and its cost grows fast with tangled graphs. So a block with more than 300 edges is not drawn until you raise the limit.
+The plugin file `main.js` is about 0.86 MB, and about 0.82 MB of it is the Graphviz engine. Layout runs on the main thread, and its cost grows fast with tangled graphs. So a block with more than 300 edges is not drawn until you raise the limit.
 
 ### Is the code readable?
 

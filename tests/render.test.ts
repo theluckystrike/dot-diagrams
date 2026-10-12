@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ALL_ENGINES, FREE_ENGINES, PRO_ENGINES } from '../src/dot';
+import { ALL_ENGINES, FREE_ENGINES, LIGHT_PALETTE, PRO_ENGINES, plan } from '../src/dot';
 import { countNodes, layoutSvg, parseSvg, sanitizeSvg, svgSize } from '../src/render';
 // @ts-expect-error plain JS build helper without types
 import { patchGraphviz } from '../patch-graphviz.mjs';
@@ -38,6 +38,43 @@ describe('layout with the real Graphviz WASM build', () => {
 		const raw = 'digraph {\n  a -> b -> ;\n}';
 		const r = await layoutSvg(raw.replace('{', '{ node [color="x"];'), 'dot', raw);
 		expect(r.error?.line).toBe(2);
+	});
+});
+
+describe('wikilink nodes with the real Graphviz WASM build', () => {
+	const draw = async (src: string, pro: boolean) => {
+		const p = plan(src, { pro, defaultEngine: 'dot', defaultPreset: '', palette: LIGHT_PALETTE });
+		const r = await layoutSvg(p.source, p.engine, src);
+		expect(r.error).toBeNull();
+		return parseSvg(r.svg ?? '', document) as SVGSVGElement;
+	};
+	const texts = (svg: SVGSVGElement, sel: string) => Array.from(svg.querySelectorAll(`${sel} text`)).map((t) => t.textContent);
+
+	it('gives wikilink nodes the node defaults of the author', async () => {
+		for (const pro of [false, true]) {
+			const svg = await draw('digraph {\n  node [shape=box];\n  "[[A]]" -> "[[B|Bee]]";\n  subgraph cluster_x { node [shape=diamond]; "[[C]]" }\n}', pro);
+			expect(svg.querySelectorAll('g.node ellipse').length, `pro ${pro}`).toBe(0);
+			expect(svg.querySelectorAll('g.node polygon').length, `pro ${pro}`).toBe(3);
+			expect(texts(svg, 'g.node')).toEqual(['A', 'Bee', 'C']);
+		}
+	});
+
+	it('draws a wikilink edge with no semicolon before the closing brace', async () => {
+		const svg = await draw('digraph { "[[A]]" -> "[[B|Bee]]" }', true);
+		expect(texts(svg, 'g.node')).toEqual(['A', 'Bee']);
+	});
+
+	it('keeps a label and a URL that the author set on a wikilink node', async () => {
+		const svg = await draw('digraph {\n  "[[A]]" -> "[[B]]";\n  "[[B]]" [label="Custom" URL="https://example.com/"];\n}', true);
+		expect(texts(svg, 'g.node')).toEqual(['A', 'Custom']);
+		expect(Array.from(svg.querySelectorAll('g.node a')).map((a) => a.getAttribute('xlink:href'))).toEqual(['dd:A', 'https://example.com/']);
+	});
+
+	it('does not make a node from a graph label or a subgraph name', async () => {
+		const svg = await draw('digraph {\n  label="[[Home]]";\n  subgraph "[[S]]" { a }\n  a -> b;\n}', true);
+		expect(countNodes(svg)).toBe(2);
+		const graphText = Array.from(svg.querySelector('g.graph')?.children ?? []).filter((c) => c.localName === 'text');
+		expect(graphText.map((t) => t.textContent)).toEqual(['Home']);
 	});
 });
 

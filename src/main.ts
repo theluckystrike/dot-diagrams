@@ -141,7 +141,13 @@ export default class DotDiagramsPlugin extends Plugin {
 			background: '#ffffff',
 			fileText: block.fileText,
 		});
-		const layout = await this.cachedLayout(plan, block.text);
+		let layout: Layout;
+		try {
+			layout = await this.cachedLayout(plan, block.text);
+		} catch (e) {
+			new Notice(`DOT diagram error: Graphviz did not load: ${e instanceof Error ? e.message : String(e)}`);
+			return null;
+		}
 		if (!layout.svg) {
 			new Notice(`DOT diagram error${layout.error?.line ? ` on line ${layout.error.line}` : ''}: ${layout.error?.message ?? 'not drawn'}`);
 			return null;
@@ -152,8 +158,12 @@ export default class DotDiagramsPlugin extends Plugin {
 	async copySvg(source: string, sourcePath: string): Promise<void> {
 		const svg = await this.exportSvgText(source, sourcePath);
 		if (svg === null) return;
-		await navigator.clipboard.writeText(svg);
-		new Notice('SVG copied to the clipboard.');
+		try {
+			await navigator.clipboard.writeText(svg);
+			new Notice('SVG copied to the clipboard.');
+		} catch (e) {
+			new Notice(`Could not copy the SVG: ${e instanceof Error ? e.message : String(e)}`);
+		}
 	}
 
 	static needsPro(what: string): void {

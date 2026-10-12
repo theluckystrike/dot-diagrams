@@ -235,6 +235,29 @@ export function insertAfterOpener(src: string, text: string): string {
 	return `${src.slice(0, at)} ${text}${src.slice(at)}`;
 }
 
+/** Index of the `}` that closes the first graph, or -1. Comments, strings and HTML are skipped. */
+export function closerStart(src: string): number {
+	const from = openerEnd(src);
+	if (from < 0) return -1;
+	let depth = 1;
+	for (const seg of scan(src)) {
+		if (seg.kind !== 'code' || seg.end <= from) continue;
+		for (let i = Math.max(seg.start, from); i < seg.end; i++) {
+			if (src[i] === '{') depth++;
+			else if (src[i] === '}' && --depth === 0) return i;
+		}
+	}
+	return -1;
+}
+
+/** Inserts text right before the brace that closes the first graph, on the same line. Without that brace, after the opening brace. */
+export function insertBeforeCloser(src: string, text: string): string {
+	const at = closerStart(src);
+	if (text === '') return src;
+	if (at < 0) return insertAfterOpener(src, text);
+	return `${src.slice(0, at)} ${text} ${src.slice(at)}`;
+}
+
 export interface WikiLink {
 	target: string;
 	alias: string | null;
@@ -276,9 +299,10 @@ interface AttrList {
 	start: number;
 	end: number;
 	hasUrl: boolean;
+	hasLabel: boolean;
 }
 
-/** Ranges of `[ ... ]` attribute lists outside strings, with whether the list sets URL or href. */
+/** Ranges of `[ ... ]` attribute lists outside strings, with whether the list sets URL or href, and label. */
 function attrLists(src: string, segs: Seg[]): AttrList[] {
 	const lists: AttrList[] = [];
 	let open = -1;
@@ -287,7 +311,7 @@ function attrLists(src: string, segs: Seg[]): AttrList[] {
 		for (let i = seg.start; i < seg.end; i++) {
 			if (src[i] === '[' && open < 0) open = i;
 			else if (src[i] === ']' && open >= 0) {
-				lists.push({ start: open, end: i, hasUrl: false });
+				lists.push({ start: open, end: i, hasUrl: false, hasLabel: false });
 				open = -1;
 			}
 		}
@@ -298,6 +322,7 @@ function attrLists(src: string, segs: Seg[]): AttrList[] {
 			.map((s) => src.slice(Math.max(s.start, l.start), Math.min(s.end, l.end)))
 			.join(' ');
 		l.hasUrl = /\b(?:URL|href)\s*=/i.test(code);
+		l.hasLabel = /\blabel\s*=/i.test(code);
 	}
 	return lists;
 }
@@ -306,6 +331,20 @@ function attrLists(src: string, segs: Seg[]): AttrList[] {
 function keyBefore(src: string, at: number): string | null {
 	const m = /([A-Za-z_]\w*)\s*=\s*$/.exec(src.slice(Math.max(0, at - 40), at));
 	return m ? (m[1] ?? '').toLowerCase() : null;
+}
+
+/** The code text next to segment k, comments and white space skipped: after it (`dir` 1) or before it (`dir` -1). */
+function codeNear(src: string, segs: Seg[], k: number, dir: 1 | -1): { text: string; at: number } {
+	for (let j = k + dir; j >= 0 && j < segs.length; j += dir) {
+		const s = segs[j];
+		if (!s || s.kind === 'comment') continue;
+		const text = src.slice(s.start, s.end);
+		if (text.trim() === '') continue;
+		if (s.kind !== 'code') return { text: '', at: -1 };
+		const at = dir === 1 ? s.start + text.length - text.trimStart().length : s.start + text.trimEnd().length;
+		return { text: dir === 1 ? text.trimStart() : text.trimEnd(), at };
+	}
+	return { text: '', at: -1 };
 }
 
 export interface MapResult {
@@ -318,50 +357,68 @@ export interface MapResult {
  * - A quoted node id that is only a link, `"[[Note]]"`, shows the note name (or alias) and, with links on, opens the note.
  * - `URL="[[Note]]"` or `href=...` becomes a `dd:` URL (links on) or is emptied (links off).
  * - A label with a link, `label="See [[Note]]"`, shows plain text, and with links on the node opens the first note.
- * The text keeps its line breaks, so error line numbers stay true.
+ * The label and URL of a link node go before the closing brace of the graph, so the node defaults of the author apply to the node.
+ * A label or URL that the author set on the node wins. The text keeps its line breaks, so error line numbers stay true.
  */
 export function mapWikilinks(src: string, links: boolean): MapResult {
 	if (!src.includes('[[')) return { source: src, links: 0 };
 	const segs = scan(src);
 	const lists = attrLists(src, segs);
 	const edits: Edit[] = [];
-	const ids = new Map<string, WikiLink>();
+	const ids = new Map<string, { link: WikiLink; own: AttrList[] }>();
 	let count = 0;
-	for (const seg of segs) {
-		if (seg.kind !== 'string') continue;
+	segs.forEach((seg, k) => {
+		if (seg.kind !== 'string') return;
 		const raw = src.slice(seg.start, seg.end);
 		const inner = raw.slice(1, raw.endsWith('"') && raw.length > 1 ? -1 : undefined);
-		if (!inner.includes('[[')) continue;
+		if (!inner.includes('[[')) return;
 		const list = lists.find((l) => seg.start > l.start && seg.end <= l.end);
-		if (!list) {
-			const link = parseWikiLink(inner);
-			if (link) ids.set(raw, link);
-			continue;
+		if (list) {
+			count += mapInList(src, seg, inner, list, links, edits);
+			return;
 		}
-		count += mapInList(src, seg, inner, list, links, edits);
-	}
-	let out = applyEdits(src, edits);
-	if (links && ids.size > 0) {
-		const decl = [...ids].map(([raw, l]) => `${raw} [label="${dotEscape(display(l))}" URL="${linkHref(l.target)}"];`).join(' ');
-		out = insertAfterOpener(out, decl);
-		count += ids.size;
-	} else if (ids.size > 0) {
-		const decl = [...ids].map(([raw, l]) => `${raw} [label="${dotEscape(display(l))}"];`).join(' ');
-		out = insertAfterOpener(out, decl);
-	}
-	return { source: out, links: count };
+		const key = keyBefore(src, seg.start);
+		// A graph attribute such as label="[[Home]]" is not a node.
+		if (key !== null) {
+			count += mapValue(key, seg, inner, links, edits) === 'url' ? 1 : 0;
+			return;
+		}
+		const next = codeNear(src, segs, k, 1);
+		// The name of a graph or a subgraph is not a node.
+		if (next.text.startsWith('{')) return;
+		const link = parseWikiLink(inner);
+		if (!link) return;
+		const entry = ids.get(raw) ?? { link, own: [] };
+		ids.set(raw, entry);
+		// A node statement, "[[Note]]" [label=...], can set its own label and URL. An edge statement cannot.
+		const prev = codeNear(src, segs, k, -1);
+		const own = next.text.startsWith('[') && !/(?:->|--)$/.test(prev.text) ? lists.find((l) => l.start === next.at) : undefined;
+		if (own) entry.own.push(own);
+	});
+	const decl = [...ids]
+		.map(([raw, { link, own }]) => {
+			const attrs: string[] = [];
+			if (!own.some((l) => l.hasLabel)) attrs.push(`label="${dotEscape(display(link))}"`);
+			if (links && !own.some((l) => l.hasUrl)) {
+				attrs.push(`URL="${linkHref(link.target)}"`);
+				count++;
+			}
+			return attrs.length ? `${raw} [${attrs.join(' ')}];` : '';
+		})
+		.filter(Boolean)
+		.join(' ');
+	return { source: insertBeforeCloser(applyEdits(src, edits), decl), links: count };
 }
 
-/** Adds the edits for one string inside an attribute list. Returns how many links it made. */
-function mapInList(src: string, seg: Seg, inner: string, list: AttrList, links: boolean, edits: Edit[]): number {
-	const key = keyBefore(src, seg.start);
+/** Adds the edit for one attribute value with a link. Returns 'url' when it made a dd: URL, else the first link of a label, or null. */
+function mapValue(key: string, seg: Seg, inner: string, links: boolean, edits: Edit[]): 'url' | WikiLink | null {
 	if (key === 'url' || key === 'href') {
 		const link = parseWikiLink(inner);
-		if (!link) return 0;
+		if (!link) return null;
 		edits.push({ start: seg.start, end: seg.end, text: links ? `"${linkHref(link.target)}"` : '""' });
-		return links ? 1 : 0;
+		return links ? 'url' : null;
 	}
-	if (key !== 'label' && key !== 'xlabel' && key !== 'tooltip') return 0;
+	if (key !== 'label' && key !== 'xlabel' && key !== 'tooltip') return null;
 	let first: WikiLink | null = null;
 	const text = inner.replace(WIKI_IN_TEXT, (_m, t: string, a?: string) => {
 		const l: WikiLink = { target: t.trim(), alias: a ? a.trim() : null };
@@ -369,9 +426,18 @@ function mapInList(src: string, seg: Seg, inner: string, list: AttrList, links: 
 		return dotEscape(display(l));
 	});
 	edits.push({ start: seg.start, end: seg.end, text: `"${text}"` });
-	if (!links || !first || list.hasUrl) return 0;
+	return first;
+}
+
+/** Adds the edits for one string inside an attribute list. Returns how many links it made. */
+function mapInList(src: string, seg: Seg, inner: string, list: AttrList, links: boolean, edits: Edit[]): number {
+	const key = keyBefore(src, seg.start);
+	if (key === null) return 0;
+	const got = mapValue(key, seg, inner, links, edits);
+	if (got === 'url') return 1;
+	if (!links || got === null || list.hasUrl) return 0;
 	list.hasUrl = true;
-	edits.push({ start: seg.end, end: seg.end, text: ` URL="${linkHref((first as WikiLink).target)}"` });
+	edits.push({ start: seg.end, end: seg.end, text: ` URL="${linkHref(got.target)}"` });
 	return 1;
 }
 

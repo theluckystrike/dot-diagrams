@@ -1,5 +1,11 @@
 # dot-diagrams
 
+## 1.1.1
+
+### Patch Changes
+
+- 527f035: Wikilink nodes now get the node defaults of the graph, a graph label with a link no longer adds a node, and a failed copy shows a notice.
+
 ## 1.1.0
 
 ### Minor Changes

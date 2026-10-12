@@ -330,7 +330,7 @@
     }
    ],
    "expected": {
-    "source": "digraph { graph [bgcolor=\"transparent\" color=\"#c9c9cf\" fontcolor=\"#222222\" fillcolor=\"#f2f3f5\"]; node [color=\"#222222\" fontcolor=\"#222222\" fillcolor=\"#f2f3f5\"]; edge [color=\"#6b6b6b\" fontcolor=\"#222222\"]; \"[[Home]]\" [label=\"Home\" URL=\"dd:Home\"]; \"[[Projects/Alpha|Alpha]]\" [label=\"Alpha\" URL=\"dd:Projects%2FAlpha\"];\n  \"[[Home]]\" -> \"[[Projects/Alpha|Alpha]]\";\n}",
+    "source": "digraph { graph [bgcolor=\"transparent\" color=\"#c9c9cf\" fontcolor=\"#222222\" fillcolor=\"#f2f3f5\"]; node [color=\"#222222\" fontcolor=\"#222222\" fillcolor=\"#f2f3f5\"]; edge [color=\"#6b6b6b\" fontcolor=\"#222222\"];\n  \"[[Home]]\" -> \"[[Projects/Alpha|Alpha]]\";\n \"[[Home]]\" [label=\"Home\" URL=\"dd:Home\"]; \"[[Projects/Alpha|Alpha]]\" [label=\"Alpha\" URL=\"dd:Projects%2FAlpha\"]; }",
     "engine": "dot",
     "preset": null,
     "notes": [],
@@ -355,7 +355,7 @@
     }
    ],
    "expected": {
-    "source": "digraph { graph [bgcolor=\"transparent\" color=\"#c9c9cf\" fontcolor=\"#222222\" fillcolor=\"#f2f3f5\"]; node [color=\"#222222\" fontcolor=\"#222222\" fillcolor=\"#f2f3f5\"]; edge [color=\"#6b6b6b\" fontcolor=\"#222222\"]; \"[[Home]]\" [label=\"Home\"]; \"[[Projects/Alpha|Alpha]]\" [label=\"Alpha\"];\n  \"[[Home]]\" -> \"[[Projects/Alpha|Alpha]]\";\n}",
+    "source": "digraph { graph [bgcolor=\"transparent\" color=\"#c9c9cf\" fontcolor=\"#222222\" fillcolor=\"#f2f3f5\"]; node [color=\"#222222\" fontcolor=\"#222222\" fillcolor=\"#f2f3f5\"]; edge [color=\"#6b6b6b\" fontcolor=\"#222222\"];\n  \"[[Home]]\" -> \"[[Projects/Alpha|Alpha]]\";\n \"[[Home]]\" [label=\"Home\"]; \"[[Projects/Alpha|Alpha]]\" [label=\"Alpha\"]; }",
     "engine": "dot",
     "preset": null,
     "notes": [],
@@ -582,7 +582,7 @@
     }
    ],
    "expected": {
-    "source": "digraph { graph [bgcolor=\"#ffffff\" color=\"#c9c9cf\" fontcolor=\"#222222\" fillcolor=\"#f2f3f5\"]; node [color=\"#222222\" fontcolor=\"#222222\" fillcolor=\"#f2f3f5\"]; edge [color=\"#6b6b6b\" fontcolor=\"#222222\"]; \"[[A]]\" [label=\"A\"]; \"[[B|Bee]]\" [label=\"Bee\"]; \"[[A]]\" -> \"[[B|Bee]]\" }",
+    "source": "digraph { graph [bgcolor=\"#ffffff\" color=\"#c9c9cf\" fontcolor=\"#222222\" fillcolor=\"#f2f3f5\"]; node [color=\"#222222\" fontcolor=\"#222222\" fillcolor=\"#f2f3f5\"]; edge [color=\"#6b6b6b\" fontcolor=\"#222222\"]; \"[[A]]\" -> \"[[B|Bee]]\"  \"[[A]]\" [label=\"A\"]; \"[[B|Bee]]\" [label=\"Bee\"]; }",
     "engine": "dot",
     "preset": null,
     "notes": [],
@@ -789,7 +789,7 @@
     }
    ],
    "expected": {
-    "source": "digraph { graph [bgcolor=\"transparent\" color=\"#c9c9cf\" fontcolor=\"#222222\" fillcolor=\"#f2f3f5\"]; node [color=\"#222222\" fontcolor=\"#222222\" fillcolor=\"#f2f3f5\"]; edge [color=\"#6b6b6b\" fontcolor=\"#222222\"]; \"[[Plan]]\" [label=\"Plan\" URL=\"dd:Plan\"]; \"[[Notes/Spec|Spec]]\" [label=\"Spec\" URL=\"dd:Notes%2FSpec\"];\n  \"[[Plan]]\" -> \"[[Notes/Spec|Spec]]\";\n}",
+    "source": "digraph { graph [bgcolor=\"transparent\" color=\"#c9c9cf\" fontcolor=\"#222222\" fillcolor=\"#f2f3f5\"]; node [color=\"#222222\" fontcolor=\"#222222\" fillcolor=\"#f2f3f5\"]; edge [color=\"#6b6b6b\" fontcolor=\"#222222\"];\n  \"[[Plan]]\" -> \"[[Notes/Spec|Spec]]\";\n \"[[Plan]]\" [label=\"Plan\" URL=\"dd:Plan\"]; \"[[Notes/Spec|Spec]]\" [label=\"Spec\" URL=\"dd:Notes%2FSpec\"]; }",
     "engine": "dot",
     "preset": null,
     "notes": [],
@@ -821,6 +821,56 @@
     "notes": [
      "The blueprint preset is a Pro feature. Used the theme colors."
     ],
+    "links": 0
+   }
+  },
+  {
+   "name": "pro: wikilink nodes keep the node defaults, label and URL of the author",
+   "args": [
+    "digraph {\n  node [shape=box];\n  \"[[A]]\" -> \"[[B]]\";\n  \"[[B]]\" [label=\"Custom\" URL=\"https://example.com/\"];\n}",
+    {
+     "pro": true,
+     "defaultEngine": "dot",
+     "defaultPreset": "",
+     "palette": {
+      "fg": "#222222",
+      "muted": "#6b6b6b",
+      "bg2": "#f2f3f5",
+      "border": "#c9c9cf",
+      "accent": "#7c5cd6"
+     }
+    }
+   ],
+   "expected": {
+    "source": "digraph { graph [bgcolor=\"transparent\" color=\"#c9c9cf\" fontcolor=\"#222222\" fillcolor=\"#f2f3f5\"]; node [color=\"#222222\" fontcolor=\"#222222\" fillcolor=\"#f2f3f5\"]; edge [color=\"#6b6b6b\" fontcolor=\"#222222\"];\n  node [shape=box];\n  \"[[A]]\" -> \"[[B]]\";\n  \"[[B]]\" [label=\"Custom\" URL=\"https://example.com/\"];\n \"[[A]]\" [label=\"A\" URL=\"dd:A\"]; }",
+    "engine": "dot",
+    "preset": null,
+    "notes": [],
+    "links": 1
+   }
+  },
+  {
+   "name": "a graph label with a link shows the name and makes no node",
+   "args": [
+    "digraph {\n  label=\"[[Home]]\";\n  subgraph \"[[S]]\" { a }\n  a -> b;\n}",
+    {
+     "pro": true,
+     "defaultEngine": "dot",
+     "defaultPreset": "",
+     "palette": {
+      "fg": "#222222",
+      "muted": "#6b6b6b",
+      "bg2": "#f2f3f5",
+      "border": "#c9c9cf",
+      "accent": "#7c5cd6"
+     }
+    }
+   ],
+   "expected": {
+    "source": "digraph { graph [bgcolor=\"transparent\" color=\"#c9c9cf\" fontcolor=\"#222222\" fillcolor=\"#f2f3f5\"]; node [color=\"#222222\" fontcolor=\"#222222\" fillcolor=\"#f2f3f5\"]; edge [color=\"#6b6b6b\" fontcolor=\"#222222\"];\n  label=\"Home\";\n  subgraph \"[[S]]\" { a }\n  a -> b;\n}",
+    "engine": "dot",
+    "preset": null,
+    "notes": [],
     "links": 0
    }
   }
