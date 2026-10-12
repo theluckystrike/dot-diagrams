@@ -1,0 +1,13 @@
+// Written by a build tool. Do not edit by hand.
+digraph CallGraph {
+  rankdir=LR;
+  node [shape=box style=rounded];
+  main -> parse_args;
+  main -> load_config;
+  main -> run_jobs;
+  load_config -> read_file;
+  run_jobs -> schedule;
+  run_jobs -> write_report;
+  schedule -> read_file;
+  write_report -> format_table;
+}

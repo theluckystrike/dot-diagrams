@@ -30,6 +30,13 @@
 		"zoom": 0.7
 	},
 	{
+		"feature": "file",
+		"caption": "A block that reads call-graph.dot from the vault. The note holds one comment line, and the file holds the graph.",
+		"note": "Generated graph.md",
+		"eval": "(async () => { const P = app.plugins.plugins['dot-diagrams']; const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); P.pro.signOut(); document.body.classList.remove('theme-light'); document.body.classList.add('theme-dark'); app.workspace.trigger('css-change'); const leaf = app.workspace.getLeaf(false); const st = leaf.getViewState(); await leaf.setViewState({ ...st, state: { ...st.state, mode: 'preview', source: false } }); await sleep(1500); return 'ok'; })()",
+		"wait": 1200
+	},
+	{
 		"feature": "links",
 		"caption": "Pro: every node of this map is a wikilink. Select a node to open its note.",
 		"note": "Project map.md",

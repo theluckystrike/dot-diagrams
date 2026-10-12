@@ -9,6 +9,9 @@ const key = (s: string) => s.normalize('NFC').toLowerCase();
 export function validZimPath(path: string): boolean {
 	return path.length > 0 && path.split('/').every((p) => p !== '' && p !== '.' && p !== '..' && !/[\\:*?"<>|#[\]]/.test(p) && ![...p].some((c) => c.charCodeAt(0) < 32) && !/[. ]$/.test(p) && !/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\.|$)/i.test(p));
 }
+/** Zim checkbox bullets and the task status that each one becomes. Zim `[x]` means dismissed, so it does not become a done task. */
+const CHECKBOX: Record<string, string> = { ' ': ' ', '*': 'x', x: 'c', '>': '>', '<': '<' };
+const UNSUPPORTED = /\{\{|^\s*\||__|~~|\[\s*[x* ><]\s*\]|\[\s*\]|^\s*\{\{\{|^\s*```|<\/?[a-z][^>]*>|\$\$/;
 function pageName(path: string): string { return path.replace(/\.txt$/i, '').replace(/_/g, ' ').normalize('NFC'); }
 function safeName(s: string, rules: ZimRules): string {
 	let out = [...s.replace(/[\u00a0\u202f]/g, ' ')].map((c) => c.charCodeAt(0) < 32 ? '-' : c).join('').replace(/[\\:*?"<>|#[\]]/g, '-').trim().replace(/[. ]+$/g, '');
@@ -92,14 +95,17 @@ function convert(source: ZimSource, page: string, paths: Map<string, string>, is
 			for (const codeLine of code) out.push(codeLine);
 			out.push(fence); i = end; continue;
 		}
-		if (/\{\{|^\s*\||__|~~|\[\s*[x* >]\s*\]|\[\s*\]|^\s*\{\{\{|^\s*```|<\/?[a-z][^>]*>|\$\$/.test(line)) {
+		// A Zim checkbox starts the line after tab indentation and needs a space or tab after it.
+		const box = /^(\t*)\[([ *x<>])\][ \t]+(.*)$/.exec(line);
+		const content = box ? box[3]! : line;
+		if (UNSUPPORTED.test(content)) {
 			report(i, 'syntax', line); out.push(line); continue;
 		}
-		const heading = /^(={2,6})\s+(.+?)\s+\1\s*$/.exec(line);
-		let text = heading ? '#'.repeat(7 - heading[1]!.length) + ' ' + heading[2]! : line;
+		const heading = box ? null : /^(={2,6})\s+(.+?)\s+\1\s*$/.exec(line);
+		let text = heading ? '#'.repeat(7 - heading[1]!.length) + ' ' + heading[2]! : content;
 		const protectedText: string[] = [];
 		let marker = String.fromCharCode(0);
-		while (line.includes(marker)) marker += String.fromCharCode(0);
+		while (content.includes(marker)) marker += String.fromCharCode(0);
 		const keep = (s: string) => { protectedText.push(s); return `${marker}${protectedText.length - 1}${marker}`; };
 		// Read code spans and links in one pass so their contents cannot become nested placeholders.
 		text = text.replace(/''([^']+?)''|\[\[([^\]]+)\]\]/g, (whole: string, code: string | undefined, inside: string | undefined) => {
@@ -116,7 +122,7 @@ function convert(source: ZimSource, page: string, paths: Map<string, string>, is
 		});
 		text = text.replace(/(^|[\s(])\/\/(\S(?:.*?\S)?)\/\//g, '$1*$2*');
 		text = text.replace(new RegExp(marker + '(\\d+)' + marker, 'g'), (_, n: string) => protectedText[Number(n)]!);
-		out.push(text);
+		out.push(box ? `${box[1]}- [${CHECKBOX[box[2]!]}] ${text}`.trimEnd() : text);
 	}
 	return { body: out.join('\n'), properties };
 }

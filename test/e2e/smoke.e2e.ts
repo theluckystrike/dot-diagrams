@@ -177,6 +177,31 @@ describe(`${pluginId} in the real app`, function () {
 		expect(s.nodes).toBe(0);
 	});
 
+	it('draws a .dot file of the vault, and draws again when the file changes', async function () {
+		await obsidianPage.write('Diagrams/build.dot', 'digraph Build {\n  src -> obj -> bin;\n}');
+		await openBlock('From file', '// file: build.dot', 'preview');
+		const first = await waitFor((x) => x.nodes === 3, 'the file diagram did not draw with 3 nodes');
+		expect(first).toMatchObject({ edges: 2, problem: '' });
+		await obsidianPage.write('Diagrams/build.dot', 'digraph Build {\n  src -> obj -> bin;\n  obj -> test;\n}');
+		const second = await waitFor((x) => x.nodes === 4, 'the diagram did not draw again after the file changed');
+		expect(second.edges).toBe(3);
+	});
+
+	it('names the file and its line in a syntax error of a .gv file', async function () {
+		await obsidianPage.write('Diagrams/broken.gv', 'digraph G {\n  a -> b;\n  b -> ;\n}');
+		await openBlock('Broken file', '// file: broken.gv', 'preview');
+		const s = await waitFor((x) => x.problem !== '', 'no error message for the broken file');
+		expect(s.problem).toContain('line 3');
+		expect(s.problem).toContain('Diagrams/broken.gv');
+		expect(s.problem).toContain('b -> ;');
+	});
+
+	it('says that a missing file is not in the vault', async function () {
+		await openBlock('Missing file', '// file: nowhere.dot', 'preview');
+		const s = await waitFor((x) => x.problem !== '', 'no error message for the missing file');
+		expect(s.problem).toContain('"nowhere.dot" is not in this vault');
+	});
+
 	it('follows the theme: light text on a dark theme, dark text on a light theme', async function () {
 		await openBlock('Theme', FLOW, 'preview');
 		await waitFor((x) => x.nodes > 0, 'no svg for the theme test');

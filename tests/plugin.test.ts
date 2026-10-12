@@ -109,4 +109,58 @@ describe('plugin', () => {
 		await plugin.openNote('Home', 'n.md', new MouseEvent('click'));
 		expect(app.vault.getFiles().length).toBe(0);
 	});
+
+	describe('blockText', () => {
+		const load = async (files: Record<string, string>) => {
+			const app = App.createConfigured__({ files });
+			const plugin = new DotDiagramsPlugin(app as never, manifest as never);
+			return plugin;
+		};
+
+		it('gives the block text when there is no file line', async () => {
+			const plugin = await load({});
+			expect(await plugin.blockText('digraph { a -> b }', 'n.md')).toEqual({ text: 'digraph { a -> b }', file: null, problem: null });
+		});
+
+		it('reads a file by its path and by its name', async () => {
+			const plugin = await load({ 'graphs/build.dot': 'digraph B { a -> b }', 'n.md': '' });
+			const byPath = await plugin.blockText('// file: graphs/build.dot', 'n.md');
+			expect(byPath).toMatchObject({ text: 'digraph B { a -> b }', fileText: 'digraph B { a -> b }', file: 'graphs/build.dot', problem: null });
+			const byLink = await plugin.blockText('// file: [[graphs/build.dot]]', 'n.md');
+			expect(byLink.fileText).toBe('digraph B { a -> b }');
+		});
+
+		it('finds a file in a folder by its bare name, as a link does', async () => {
+			const plugin = await load({ 'graphs/build.gv': 'graph G { a -- b }', 'n.md': '' });
+			const r = await plugin.blockText('// file: build.gv', 'n.md');
+			expect(r).toMatchObject({ fileText: 'graph G { a -- b }', file: 'graphs/build.gv', problem: null });
+		});
+
+		it('keeps the graph of a block that has its own graph and a file comment', async () => {
+			const plugin = await load({ 'graphs/build.dot': 'digraph B { a -> b }', 'n.md': '' });
+			const src = '// file: graphs/build.dot\ndigraph { x -> y }';
+			expect(await plugin.blockText(src, 'n.md')).toEqual({ text: src, file: null, problem: null });
+		});
+
+		it('says so when the file is not in the vault', async () => {
+			const plugin = await load({ 'n.md': '' });
+			const r = await plugin.blockText('// file: missing.dot', 'n.md');
+			expect(r.problem).toBe('The file "missing.dot" is not in this vault.');
+			expect(r.fileText).toBeUndefined();
+			expect(r.file).toBe('missing.dot');
+		});
+
+		it('refuses a file that is not .dot or .gv, even when it exists', async () => {
+			const plugin = await load({ 'notes/secret.md': 'private text', 'n.md': '' });
+			const r = await plugin.blockText('// file: notes/secret.md', 'n.md');
+			expect(r.problem).toMatch(/not a DOT file/);
+			expect(r.fileText).toBeUndefined();
+		});
+
+		it('does not read a path outside the vault', async () => {
+			const plugin = await load({ 'n.md': '' });
+			const r = await plugin.blockText('// file: ../../etc/hosts.dot', 'n.md');
+			expect(r.problem).toMatch(/not in this vault/);
+		});
+	});
 });

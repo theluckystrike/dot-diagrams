@@ -14,7 +14,8 @@ describe('golden vectors (packages/spec/vectors/dot-diagrams.json)', () => {
 	}
 	it('keeps every line break, so Graphviz error lines stay true', () => {
 		for (const c of vectors.cases) {
-			const raw = (c.args as [string, PlanOptions])[0];
+			const [block, opts] = c.args as [string, PlanOptions];
+			const raw = opts.fileText ?? block;
 			const out = (c.expected as { source: string }).source;
 			expect(out.split('\n').length).toBe(raw.split('\n').length);
 		}

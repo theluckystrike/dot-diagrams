@@ -12,6 +12,8 @@ export class DotBlock extends MarkdownRenderChild {
 	private token = 0;
 	/** Node count of the diagram on screen. The end-to-end test reads it. */
 	nodes = 0;
+	/** True when the block has a `// file:` line, so a change of a DOT file draws it again. */
+	readsFile = false;
 
 	constructor(
 		containerEl: HTMLElement,
@@ -37,19 +39,23 @@ export class DotBlock extends MarkdownRenderChild {
 	async draw(): Promise<void> {
 		const mine = ++this.token;
 		const el = this.containerEl;
-		if (this.source.trim() === '') return this.showMessage('This DOT block is empty. Write a graph, for example: digraph { a -> b }');
-		const problem = sizeProblem(this.source, MAX_CHARS, this.plugin.settings.maxEdges);
-		if (problem) return this.showError(null, problem);
+		const block = await this.plugin.blockText(this.source, this.sourcePath);
+		if (mine !== this.token) return;
+		this.readsFile = block.file !== null;
+		if (block.problem) return this.showError(null, block.problem, block.text);
+		if (block.text.trim() === '') return this.showMessage(block.file === null ? 'This DOT block is empty. Write a graph, for example: digraph { a -> b }' : `The file ${block.file} is empty.`);
+		const problem = sizeProblem(block.text, MAX_CHARS, this.plugin.settings.maxEdges);
+		if (problem) return this.showError(null, problem, block.text);
 		if (!el.querySelector('svg')) this.showMessage('Drawing the diagram...');
 		let result;
 		try {
-			result = await this.plugin.layoutFor(this.source, el);
+			result = await this.plugin.layoutFor(this.source, el, block.fileText);
 		} catch (e) {
-			if (mine === this.token) this.showError(null, `Graphviz did not load: ${e instanceof Error ? e.message : String(e)}`);
+			if (mine === this.token) this.showError(null, `Graphviz did not load: ${e instanceof Error ? e.message : String(e)}`, block.text);
 			return;
 		}
 		if (mine !== this.token) return;
-		if (!result.layout.svg) return this.showError(result.layout.error, '');
+		if (!result.layout.svg) return this.showError(result.layout.error, '', block.text, block.fileText === undefined ? null : block.file);
 		const svg = parseSvg(result.layout.svg, el.doc);
 		if (!svg) return this.showError(null, 'Graphviz returned something that is not an SVG.');
 		sanitizeSvg(svg, isPro());
@@ -66,22 +72,24 @@ export class DotBlock extends MarkdownRenderChild {
 		this.containerEl.createDiv({ cls: 'dot-diagrams-status', text });
 	}
 
-	private showError(err: DotError | null, text: string): void {
+	/** `code` is the text that the line number points into: the block, or the DOT file when `file` is set. */
+	private showError(err: DotError | null, text: string, code: string = this.source, file: string | null = null): void {
 		this.nodes = 0;
 		const el = this.containerEl;
 		el.empty();
 		const box = el.createDiv({ cls: 'dot-diagrams-error' });
 		const line = err?.line ?? null;
-		box.createDiv({ cls: 'dot-diagrams-error-title', text: line === null ? 'DOT diagram error' : `DOT diagram error on line ${line}` });
+		const where = file === null ? '' : ` in ${file}`;
+		box.createDiv({ cls: 'dot-diagrams-error-title', text: line === null ? `DOT diagram error${where}` : `DOT diagram error on line ${line}${where}` });
 		box.createDiv({ cls: 'dot-diagrams-error-message', text: err?.message ?? text });
-		const code = excerptLine(this.source, line);
-		if (code) box.createEl('code', { cls: 'dot-diagrams-error-code', text: `${line ?? ''}: ${code}` });
+		const excerpt = excerptLine(code, line);
+		if (excerpt) box.createEl('code', { cls: 'dot-diagrams-error-code', text: `${line ?? ''}: ${excerpt}` });
 	}
 
 	private addToolbar(el: HTMLElement): void {
 		if (!this.plugin.settings.showToolbar) return;
 		const bar = el.createDiv({ cls: 'dot-diagrams-toolbar' });
-		this.addButton(bar, 'copy', 'copy', 'Copy SVG', () => this.plugin.copySvg(this.source));
+		this.addButton(bar, 'copy', 'copy', 'Copy SVG', () => this.plugin.copySvg(this.source, this.sourcePath));
 		this.addButton(bar, 'download', 'export-svg', 'Export SVG to the vault (Pro)', () => this.plugin.exportBlock(this.source, this.sourcePath, 'svg'));
 		this.addButton(bar, 'image', 'export-png', 'Export PNG to the vault (Pro)', () => this.plugin.exportBlock(this.source, this.sourcePath, 'png'));
 	}

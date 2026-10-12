@@ -1,5 +1,11 @@
 # dot-diagrams
 
+## 1.1.0
+
+### Minor Changes
+
+- d374fd5: Draw a DOT file of the vault in a block with a `// file: path` line, and draw it again when the file changes.
+
 ## 1.0.1
 
 ### Patch Changes

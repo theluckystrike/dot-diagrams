@@ -84,15 +84,17 @@ export interface SponsorsUiOptions {
 	proSummary: string;
 	/** One sentence: the price, for example "$3 a month or more, or $15 once for life." */
 	priceText: string;
+	/** Status text when the product needs a separate account for its free service. */
+	signedOutText?: string;
 }
 
 /** The status line of the account row. */
-export function sponsorsStatusText(pro: SponsorsManager): string {
+export function sponsorsStatusText(pro: SponsorsManager, signedOutText?: string): string {
 	const s = pro.getState();
 	if (!pro.isConfigured()) return 'Sign in with GitHub is not set up in this version yet. Free features work as normal.';
 	if (s.status === 'signed-out') {
 		const lead = s.message ? `${s.message} ` : '';
-		return `${lead}Not signed in. Free features work without an account. Nothing is sent to GitHub until you select Sign in with GitHub.`;
+		return `${lead}${signedOutText ?? 'Not signed in. Free features work without an account. Nothing is sent to GitHub until you select Sign in with GitHub.'}`;
 	}
 	if (s.status === 'unchecked') return s.message || 'Signed in. Checking the sponsorship with GitHub.';
 	if (s.status === 'no') return `${s.message} After you sponsor, select Refresh.`;
@@ -158,13 +160,13 @@ function runSignIn(setting: Setting, pro: SponsorsManager, code: DeviceCode, red
 }
 
 /** Fills the account row: status line, Sign in with GitHub, Refresh and Sign out. Returns a cleanup. */
-export function fillAccountSetting(setting: Setting, pro: SponsorsManager): () => void {
+export function fillAccountSetting(setting: Setting, pro: SponsorsManager, ui?: SponsorsUiOptions): () => void {
 	let stop: () => void = () => undefined;
 	const redraw = () => {
 		stop();
 		setting.controlEl.empty();
 		setting.setName('GitHub account');
-		setting.setDesc(sponsorsStatusText(pro));
+		setting.setDesc(sponsorsStatusText(pro, ui?.signedOutText));
 		if (!pro.hasToken()) {
 			setting.addButton((b) =>
 				b
@@ -209,7 +211,7 @@ export function sponsorsSettingItems(pro: SponsorsManager, ui: SponsorsUiOptions
 			heading: 'Pro',
 			items: [
 				{ name: 'Get pro', render: (setting: Setting) => fillGetProSetting(setting, pro, ui) },
-				{ name: 'GitHub account', render: (setting: Setting) => fillAccountSetting(setting, pro) },
+				{ name: 'GitHub account', render: (setting: Setting) => fillAccountSetting(setting, pro, ui) },
 			],
 		},
 	];

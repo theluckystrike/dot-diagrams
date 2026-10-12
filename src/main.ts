@@ -1,8 +1,8 @@
-import { Keymap, Notice, Plugin, debounce, type Editor, type MarkdownFileInfo, type MarkdownView } from 'obsidian';
+import { Keymap, Notice, Plugin, TFile, debounce, normalizePath, type Editor, type MarkdownFileInfo, type MarkdownView } from 'obsidian';
 import type { SponsorsManager } from './license/index';
 import { createGitHubSponsors } from './license/github-obsidian';
 import { DotBlock } from './block';
-import { LIGHT_PALETTE, findBlockAt, plan as makePlan, type Plan } from './dot';
+import { LIGHT_PALETTE, fileProblem, findBlockAt, parseFileDirective, plan as makePlan, type Plan } from './dot';
 import { SPONSORS, bindPro, isPro, onProChange, resetPro } from './pro';
 import { layoutSvg, readPalette, svgToPng, type Layout } from './render';
 import { DEFAULT_SETTINGS, DotDiagramsSettingTab, normalizeSettings, type DotDiagramsSettings } from './settings';
@@ -17,6 +17,14 @@ export interface Drawn {
 	layout: Layout;
 }
 
+/** The graph text of a block. With a `// file:` line, `fileText` is the text of that vault file and `file` is its path. */
+export interface BlockText {
+	text: string;
+	fileText?: string;
+	file: string | null;
+	problem: string | null;
+}
+
 export default class DotDiagramsPlugin extends Plugin {
 	settings: DotDiagramsSettings = { ...DEFAULT_SETTINGS };
 	/** GitHub Sponsors Pro state. Created in onload; null before that. */
@@ -27,6 +35,10 @@ export default class DotDiagramsPlugin extends Plugin {
 	private settingTab: DotDiagramsSettingTab | null = null;
 	readonly redrawAll = debounce(() => {
 		for (const b of [...this.blocks]) void b.draw();
+	}, REDRAW_MS);
+	/** Draws the blocks that read a DOT file again, after a file was changed, made, renamed or deleted. */
+	private readonly redrawFileBlocks = debounce(() => {
+		for (const b of [...this.blocks]) if (b.readsFile) void b.draw();
 	}, REDRAW_MS);
 
 	async onload(): Promise<void> {
@@ -47,6 +59,13 @@ export default class DotDiagramsPlugin extends Plugin {
 			});
 		}
 		this.registerEvent(this.app.workspace.on('css-change', () => this.redrawAll()));
+		this.registerEvent(this.app.vault.on('create', (f) => this.onFileChange(f.path)));
+		this.registerEvent(this.app.vault.on('modify', (f) => this.onFileChange(f.path)));
+		this.registerEvent(this.app.vault.on('delete', (f) => this.onFileChange(f.path)));
+		this.registerEvent(this.app.vault.on('rename', (f, oldPath) => {
+			this.onFileChange(f.path);
+			this.onFileChange(oldPath);
+		}));
 		this.addExportCommand('export-svg', 'Export the diagram at the cursor to SVG', 'svg');
 		this.addExportCommand('export-png', 'Export the diagram at the cursor to PNG', 'png');
 		this.app.workspace.onLayoutReady(() => {
@@ -69,11 +88,31 @@ export default class DotDiagramsPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 
+	private onFileChange(path: string): void {
+		if (/\.(?:dot|gv)$/i.test(path)) this.redrawFileBlocks();
+	}
+
+	/** The graph text of a block. A `// file: path` line gives the text of that .dot or .gv file of the vault. A bad path gives a problem sentence. */
+	async blockText(source: string, sourcePath: string): Promise<BlockText> {
+		const ref = parseFileDirective(source);
+		if (ref === null) return { text: source, file: null, problem: null };
+		const bad = fileProblem(ref);
+		if (bad) return { text: source, file: ref, problem: bad };
+		const file = this.app.metadataCache.getFirstLinkpathDest(ref, sourcePath) ?? this.app.vault.getFileByPath(normalizePath(ref));
+		if (!(file instanceof TFile)) return { text: source, file: ref, problem: `The file "${ref}" is not in this vault.` };
+		try {
+			const fileText = await this.app.vault.read(file);
+			return { text: fileText, fileText, file: file.path, problem: null };
+		} catch (e) {
+			return { text: source, file: file.path, problem: `Could not read "${file.path}": ${e instanceof Error ? e.message : String(e)}` };
+		}
+	}
+
 	/** Plan and layout for a block, with the theme colors read at el. Results are cached by engine and final source. */
-	async layoutFor(source: string, el: HTMLElement): Promise<Drawn> {
+	async layoutFor(source: string, el: HTMLElement, fileText?: string): Promise<Drawn> {
 		const palette = readPalette(el);
-		const plan = makePlan(source, { pro: isPro(), defaultEngine: this.settings.defaultEngine, defaultPreset: this.settings.defaultPreset, palette });
-		return { plan, layout: await this.cachedLayout(plan, source) };
+		const plan = makePlan(source, { pro: isPro(), defaultEngine: this.settings.defaultEngine, defaultPreset: this.settings.defaultPreset, palette, fileText });
+		return { plan, layout: await this.cachedLayout(plan, fileText ?? source) };
 	}
 
 	private async cachedLayout(plan: Plan, raw: string): Promise<Layout> {
@@ -87,7 +126,12 @@ export default class DotDiagramsPlugin extends Plugin {
 	}
 
 	/** SVG text for a file or the clipboard: light colors on white, no note links. Null (with a notice) on an error. */
-	async exportSvgText(source: string): Promise<string | null> {
+	async exportSvgText(source: string, sourcePath: string): Promise<string | null> {
+		const block = await this.blockText(source, sourcePath);
+		if (block.problem) {
+			new Notice(`DOT diagram error: ${block.problem}`);
+			return null;
+		}
 		const plan = makePlan(source, {
 			pro: isPro(),
 			defaultEngine: this.settings.defaultEngine,
@@ -95,8 +139,9 @@ export default class DotDiagramsPlugin extends Plugin {
 			palette: LIGHT_PALETTE,
 			links: false,
 			background: '#ffffff',
+			fileText: block.fileText,
 		});
-		const layout = await this.cachedLayout(plan, source);
+		const layout = await this.cachedLayout(plan, block.text);
 		if (!layout.svg) {
 			new Notice(`DOT diagram error${layout.error?.line ? ` on line ${layout.error.line}` : ''}: ${layout.error?.message ?? 'not drawn'}`);
 			return null;
@@ -104,8 +149,8 @@ export default class DotDiagramsPlugin extends Plugin {
 		return layout.svg;
 	}
 
-	async copySvg(source: string): Promise<void> {
-		const svg = await this.exportSvgText(source);
+	async copySvg(source: string, sourcePath: string): Promise<void> {
+		const svg = await this.exportSvgText(source, sourcePath);
 		if (svg === null) return;
 		await navigator.clipboard.writeText(svg);
 		new Notice('SVG copied to the clipboard.');
@@ -121,7 +166,7 @@ export default class DotDiagramsPlugin extends Plugin {
 			DotDiagramsPlugin.needsPro('Export to SVG and PNG');
 			return null;
 		}
-		const svg = await this.exportSvgText(source);
+		const svg = await this.exportSvgText(source, sourcePath);
 		if (svg === null) return null;
 		try {
 			const data = kind === 'svg' ? toArrayBuffer(new TextEncoder().encode(svg)) : await svgToPng(svg, this.settings.exportScale);

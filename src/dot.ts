@@ -111,6 +111,32 @@ export function parseDirectives(src: string): Directives {
 	return out;
 }
 
+const FILE_DIRECTIVE = /^[ \t]*(?:\/\/|#|\/\*)[ \t]*file[ \t]*[:=][ \t]*(.+?)[ \t]*(?:\*\/)?[ \t]*$/;
+const DOT_FILE = /\.(?:dot|gv)$/i;
+
+/** The vault file named by `// file: path` (a `# file:` line and a block comment work too), or null. `[[name.dot]]` and quotes around the path are removed. The first line wins. A block with graph text of its own keeps it, so the line counts only in a block of comments. */
+export function parseFileDirective(src: string): string | null {
+	const segs = scan(src);
+	if (segs.some((s) => s.kind !== 'comment' && src.slice(s.start, s.end).trim() !== '')) return null;
+	for (const seg of segs) {
+		if (seg.kind !== 'comment') continue;
+		const lineStart = src.lastIndexOf('\n', seg.start - 1) + 1;
+		const m = FILE_DIRECTIVE.exec(src.slice(lineStart, seg.end));
+		if (!m) continue;
+		let path = (m[1] ?? '').trim();
+		const link = parseWikiLink(path);
+		if (link) path = link.target;
+		path = path.replace(/^(["'])(.*)\1$/, '$2').trim();
+		return path === '' ? null : path;
+	}
+	return null;
+}
+
+/** A message when the path is not a DOT file, else null. Only .dot and .gv files are read. */
+export function fileProblem(path: string): string | null {
+	return DOT_FILE.test(path) ? null : `"${path}" is not a DOT file. DOT Diagrams reads files that end in .dot or .gv.`;
+}
+
 export interface EngineChoice {
 	engine: Engine;
 	note: string | null;
@@ -429,11 +455,19 @@ export interface PlanOptions {
 	links?: boolean;
 	/** Graph background. Default: transparent, so the theme shows through. Exports use white. */
 	background?: string;
+	/** Text of the file that a `// file:` line names. It replaces the graph text of the block. Engine and preset lines of the block win over lines in the file. */
+	fileText?: string;
 }
 
 /** The whole preprocessing: directives, engine choice, preset, wikilinks, theme defaults. */
-export function plan(raw: string, o: PlanOptions): Plan {
-	const dir = parseDirectives(raw);
+export function plan(block: string, o: PlanOptions): Plan {
+	const raw = o.fileText ?? block;
+	const dir = parseDirectives(block);
+	if (o.fileText !== undefined) {
+		const fromFile = parseDirectives(o.fileText);
+		dir.engine ??= fromFile.engine;
+		dir.preset ??= fromFile.preset;
+	}
 	const notes: string[] = [];
 	const choice = resolveEngine(dir.engine, o.defaultEngine, o.pro);
 	if (choice.note) notes.push(choice.note);
