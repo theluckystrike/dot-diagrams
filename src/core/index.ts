@@ -17,3 +17,4 @@ export {
 	type HeadingCaseResult,
 	type HeadingChange,
 } from './headingCase.js';
+export { planZimImport, resolveZimLink, compareZimSources, validZimPath, ZIM_RULES, type ZimSource, type ZimRules, type ZimIssue, type ZimNote, type ZimPlan } from './zim.js';
