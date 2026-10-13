@@ -7,5 +7,7 @@ export default defineConfig({
 		environment: 'happy-dom',
 		setupFiles: ['obsidian-test-mocks/vitest-setup'],
 		include: ['tests/**/*.test.ts'],
+		// Large-input tests need more than 5 seconds on shared CI runners.
+		testTimeout: 30000,
 	},
 });

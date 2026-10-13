@@ -88,7 +88,8 @@ export function licenseDecision(state: LicenseState, now: number, trialDays = 0)
 	if (state.key === '' || state.status === 'none' || state.status === 'malformed') {
 		return { pro: inTrial, shouldCheck: false };
 	}
-	if (state.status === 'unchecked') return { pro: inTrial, shouldCheck: now - state.lastAttemptAt >= RETRY_MS };
+	const retryOk = now - state.lastAttemptAt >= RETRY_MS || now < state.lastAttemptAt;
+	if (state.status === 'unchecked') return { pro: inTrial, shouldCheck: retryOk };
 	// A definite "no" is final until the user enters a key again or presses "Check now".
 	if (state.status === 'invalid') return { pro: inTrial, shouldCheck: false };
 
@@ -96,7 +97,6 @@ export function licenseDecision(state: LicenseState, now: number, trialDays = 0)
 	const notExpired = state.expiresAt === null || now < state.expiresAt;
 	const keyPro = sinceValid <= GRACE_MS && sinceValid >= -FUTURE_SKEW_MS && notExpired;
 	const stale = now - state.lastAnswerAt >= CACHE_MS || now < state.lastAnswerAt || !notExpired;
-	const retryOk = now - state.lastAttemptAt >= RETRY_MS || now < state.lastAttemptAt;
 	return { pro: keyPro || inTrial, shouldCheck: stale && retryOk };
 }
 
@@ -123,10 +123,9 @@ export function applyVerdict(state: LicenseState, verdict: Verdict, now: number,
 		return { ...state, status: 'invalid', keyIssuedAt: issued(verdict.issuedAt, state.keyIssuedAt), lastAnswerAt: now, lastAttemptAt: now, activationId: '', message: verdict.reason };
 	}
 	const graceEnd = state.lastValidAt + GRACE_MS;
-	const tail =
-		state.status === 'valid' && now <= graceEnd
-			? ` Pro stays on until ${day(graceEnd)} without a check.`
-			: '';
+	// The key rule of licenseDecision, so the text never promises Pro after the key term ended.
+	const keyPro = state.status === 'valid' && now - state.lastValidAt >= -FUTURE_SKEW_MS && now <= graceEnd && (state.expiresAt === null || now < state.expiresAt);
+	const tail = keyPro ? ` Pro stays on until ${day(graceEnd)} without a check.` : '';
 	return { ...state, lastAttemptAt: now, message: `Could not reach ${seller}: ${verdict.reason}.${tail}` };
 }
 

@@ -115,7 +115,8 @@ export function applySponsorsVerdict(state: SponsorsState, v: SponsorsVerdict, n
 	}
 	if (v.kind === 'signed-out') return { ...emptySponsorsState(), message: v.message };
 	const graceEnd = state.lastValidAt + GRACE_MS;
-	const tail = state.status === 'pro' && now <= graceEnd ? ` Pro stays on until ${day(graceEnd)} without a check.` : '';
+	// The same rule as isPro(), so the text never promises Pro after a one-time term ended.
+	const tail = sponsorsDecision(state, true, now).pro ? ` Pro stays on until ${day(graceEnd)} without a check.` : '';
 	return { ...state, lastAttemptAt: now, message: `Could not reach GitHub: ${v.reason}.${tail}` };
 }
 
@@ -147,6 +148,9 @@ export type SignInResult = TokenResult | { kind: 'checked'; state: SponsorsState
 export class SponsorsManager {
 	private state: SponsorsState = emptySponsorsState();
 	private inflight: Promise<void> | null = null;
+	/** The token of the check in flight. */
+	private inflightToken: string | null = null;
+	private disposed = false;
 	private listeners = new Set<() => void>();
 	private readonly now: () => number;
 	private readonly sleep: (ms: number) => Promise<void>;
@@ -160,6 +164,15 @@ export class SponsorsManager {
 
 	get config(): SponsorsConfig {
 		return this.opts.config;
+	}
+
+	/**
+	 * Plugin unload: stops a sign-in poll, sends no more requests, drops answers that arrive later
+	 * and calls no listener. createGitHubSponsors registers it with the plugin.
+	 */
+	dispose(): void {
+		this.disposed = true;
+		this.listeners.clear();
 	}
 
 	/** Loads the cache. Never sends a request. A state without a token is a signed-out state. */
@@ -206,6 +219,7 @@ export class SponsorsManager {
 
 	/** Sign in, step 1: the user code to show. Sends only the client id and the scope to github.com. */
 	async startSignIn(): Promise<DeviceStart> {
+		if (this.disposed) return { kind: 'error', reason: 'The plugin is not loaded.' };
 		try {
 			return await withTimeout(requestDeviceCode(this.opts.http, this.opts.config, this.now()), this.timeoutMs);
 		} catch {
@@ -216,8 +230,11 @@ export class SponsorsManager {
 	/** Sign in, step 2: waits for the user to enter the code, stores the token, checks the sponsorship once. */
 	async finishSignIn(code: DeviceCode, cancelled: () => boolean = () => false): Promise<SignInResult> {
 		const timed: HttpClient = (req) => withTimeout(this.opts.http(req), this.timeoutMs);
-		const result = await waitForDeviceToken(timed, this.opts.config, code, { now: this.now, sleep: this.sleep, cancelled });
+		const stop = () => this.disposed || cancelled();
+		if (stop()) return { kind: 'cancelled' };
+		const result = await waitForDeviceToken(timed, this.opts.config, code, { now: this.now, sleep: this.sleep, cancelled: stop });
 		if (result.kind !== 'token') return result;
+		if (this.disposed) return { kind: 'cancelled' };
 		this.opts.tokens.set(result.token);
 		this.state = { ...emptySponsorsState(), status: 'unchecked' };
 		this.save();
@@ -233,9 +250,15 @@ export class SponsorsManager {
 	}
 
 	private check(): Promise<void> {
+		if (this.disposed) return Promise.resolve();
+		const token = this.opts.tokens.get();
+		// A check with an older token drops its answer; check the new token after it ends.
+		if (this.inflight && this.inflightToken !== token) return this.inflight.then(() => this.check());
 		if (!this.inflight) {
+			this.inflightToken = token;
 			this.inflight = this.runCheck().finally(() => {
 				this.inflight = null;
+				this.inflightToken = null;
 			});
 		}
 		return this.inflight;
@@ -244,16 +267,18 @@ export class SponsorsManager {
 	private async runCheck(): Promise<void> {
 		const token = this.opts.tokens.get();
 		if (typeof token !== 'string' || !isWellFormedToken(token)) return;
+		// The time before the request: a 6-hour tick then finds the retry due, not a few ms short.
+		const startedAt = this.now();
 		let verdict: SponsorsVerdict;
 		try {
 			verdict = await withTimeout(checkSponsorship(this.opts.http, this.opts.config, token, this.now), this.timeoutMs);
 		} catch (e) {
 			verdict = { kind: 'error', reason: e instanceof Error && e.message === 'timeout' ? 'timeout' : 'network error' };
 		}
-		// The user may have signed out or in again while the request ran; drop a stale answer.
-		if (this.opts.tokens.get() !== token) return;
+		// The user may have signed out or in again, or the plugin unloaded, while the request ran; drop a stale answer.
+		if (this.disposed || this.opts.tokens.get() !== token) return;
 		if (verdict.kind === 'signed-out') this.opts.tokens.clear();
-		this.state = applySponsorsVerdict(this.state, verdict, this.now());
+		this.state = applySponsorsVerdict(this.state, verdict, startedAt);
 		this.save();
 	}
 

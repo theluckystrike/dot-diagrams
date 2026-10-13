@@ -189,12 +189,17 @@ export type SponsorsVerdict =
 	| { kind: 'signed-out'; message: string }
 	| { kind: 'error'; reason: string };
 
-/** Adds whole calendar months in UTC. */
+/** Adds whole calendar months in UTC. A day past the end of the target month becomes its last day. */
 export function addMonths(ms: number, months: number): number {
 	const d = new Date(ms);
+	const dayOfMonth = d.getUTCDate();
 	d.setUTCMonth(d.getUTCMonth() + months);
+	if (d.getUTCDate() !== dayOfMonth) d.setUTCDate(0);
 	return d.getTime();
 }
+
+/** The error reason when a sponsorship record has no tier price (Sponsorship.tier is nullable). */
+export const NO_AMOUNT_REASON = 'GitHub did not send the sponsorship amount';
 
 const usd = (n: number): string => `$${Number.isInteger(n) ? n : n.toFixed(2)}`;
 const isoDay = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
@@ -205,17 +210,21 @@ export function judgeSponsorship(s: Record<string, unknown> | null, login: strin
 	if (!s) return no('not-sponsoring', `@${login} does not sponsor @${cfg.sponsorLogin} on GitHub.`);
 	const tier = record(s.tier);
 	// Custom one-time amounts carry their amount in the tier price fields; compare amounts, never tier ids or names.
-	const dollars = typeof tier.monthlyPriceInDollars === 'number' && Number.isFinite(tier.monthlyPriceInDollars) ? tier.monthlyPriceInDollars * 100 : 0;
+	const dollars = typeof tier.monthlyPriceInDollars === 'number' && Number.isFinite(tier.monthlyPriceInDollars) ? tier.monthlyPriceInDollars * 100 : null;
 	const cents = typeof tier.monthlyPriceInCents === 'number' && Number.isFinite(tier.monthlyPriceInCents) ? tier.monthlyPriceInCents : dollars;
-	const amount = cents / 100;
+	const amount = (cents ?? 0) / 100;
 	const tierName = str(tier.name) || `${usd(amount)}`;
 	const oneTime = s.isOneTimePayment === true || tier.isOneTime === true;
+	// A record without a price is no answer: the offline grace and the retry apply, never a definite "no".
+	const unknownAmount: SponsorsVerdict = { kind: 'error', reason: NO_AMOUNT_REASON };
 	if (!oneTime) {
 		if (s.isActive !== true) return no('ended', `The monthly sponsorship of @${login} has ended.`);
+		if (cents === null) return unknownAmount;
 		if (amount < cfg.minMonthlyUsd) return no('below-tier', `@${login} sponsors ${usd(amount)} a month. Pro needs ${usd(cfg.minMonthlyUsd)} a month or more.`);
 		return { kind: 'pro', login, tierName, usd: amount, oneTime: false, expiresAt: null };
 	}
 	if (cfg.oneTimeUsd <= 0) return no('one-time-off', `One-time sponsorships do not turn on Pro here. Pro needs a monthly sponsorship of ${usd(cfg.minMonthlyUsd)} or more.`);
+	if (cents === null) return unknownAmount;
 	if (amount < cfg.oneTimeUsd) return no('one-time-below', `@${login} sponsored ${usd(amount)} once. Pro needs a one-time sponsorship of ${usd(cfg.oneTimeUsd)} or more.`);
 	const paidAt = readNumberTime(s.tierSelectedAt) ?? readNumberTime(s.createdAt);
 	if (cfg.oneTimeMonths > 0) {
@@ -279,7 +288,13 @@ export function judgeGraphqlReply(status: number, json: unknown, cfg: SponsorsCo
 	if (login === '' || typeof user !== 'object' || user === null) return { kind: 'error', reason: 'unexpected reply from GitHub' };
 	const s = (user as Record<string, unknown>).sponsorshipForViewerAsSponsor;
 	const verdict = judgeSponsorship(typeof s === 'object' && s !== null ? (s as Record<string, unknown>) : null, login, cfg, now);
-	return applyTotalPaid(verdict, readTotalCents(viewer), cfg);
+	const total = readTotalCents(viewer);
+	if (verdict.kind === 'error') {
+		// An unknown amount is no answer, but a lifetime total paid still decides.
+		const lifted = applyTotalPaid({ kind: 'no', login, reason: 'below-tier', message: '' }, total, cfg);
+		return lifted.kind === 'pro' ? lifted : verdict;
+	}
+	return applyTotalPaid(verdict, total, cfg);
 }
 
 /** One request: the sponsorship of the signed-in user to cfg.sponsorLogin. Rejects only on network failure. */

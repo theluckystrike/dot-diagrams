@@ -1,7 +1,7 @@
 // Obsidian adapter for the GitHub Sponsors Pro check: requestUrl transport, SecretStorage token,
 // device-local state, the "Get Pro" settings rows and a Pro guard.
 // Products import it as the ./github-obsidian entry of this package.
-import { Notice, requestUrl, type App, type RequestUrlResponsePromise, type Setting, type SettingDefinitionItem } from 'obsidian';
+import { Notice, requestUrl, type App, type Component, type RequestUrlResponsePromise, type Setting, type SettingDefinitionItem } from 'obsidian';
 import { ACCESS_TOKEN_URL, DEVICE_CODE_URL, GRAPHQL_URL, sponsorUrl, type DeviceCode, type SponsorsConfig } from './github';
 import { SponsorsManager, type SponsorsState, type SponsorsStateStore, type TokenStore } from './sponsors';
 import type { HttpClient, HttpRequest, HttpResponse } from './types';
@@ -71,12 +71,15 @@ export function localSponsorsStore(app: App, pluginId: string): SponsorsStateSto
 }
 
 /**
- *   this.pro = createGitHubSponsors(this.app, this.manifest.id, SPONSORS);
+ *   this.pro = createGitHubSponsors(this.app, this.manifest.id, SPONSORS, this);
  *   this.pro.init();                                   // no request
  *   this.app.workspace.onLayoutReady(() => void this.pro.refresh());  // a request only when signed in and due
+ * owner is the plugin: its unload disposes the manager, so a sign-in poll or a check never outlives the plugin.
  */
-export function createGitHubSponsors(app: App, pluginId: string, config: SponsorsConfig): SponsorsManager {
-	return new SponsorsManager({ config, http: githubRequestClient, tokens: secretTokenStore(app, pluginId), store: localSponsorsStore(app, pluginId) });
+export function createGitHubSponsors(app: App, pluginId: string, config: SponsorsConfig, owner: Pick<Component, 'register'>): SponsorsManager {
+	const pro = new SponsorsManager({ config, http: githubRequestClient, tokens: secretTokenStore(app, pluginId), store: localSponsorsStore(app, pluginId) });
+	owner.register(() => pro.dispose());
+	return pro;
 }
 
 export interface SponsorsUiOptions {
@@ -162,8 +165,11 @@ function runSignIn(setting: Setting, pro: SponsorsManager, code: DeviceCode, red
 /** Fills the account row: status line, Sign in with GitHub, Refresh and Sign out. Returns a cleanup. */
 export function fillAccountSetting(setting: Setting, pro: SponsorsManager, ui?: SponsorsUiOptions): () => void {
 	let stop: () => void = () => undefined;
+	// Set when Obsidian closes or redraws the row; work that ends later must not touch the row or start a sign in.
+	let disposed = false;
 	const redraw = () => {
 		stop();
+		if (disposed) return;
 		setting.controlEl.empty();
 		setting.setName('GitHub account');
 		setting.setDesc(sponsorsStatusText(pro, ui?.signedOutText));
@@ -175,6 +181,7 @@ export function fillAccountSetting(setting: Setting, pro: SponsorsManager, ui?: 
 					.onClick(async () => {
 						b.setDisabled(true);
 						const start = await pro.startSignIn();
+						if (disposed) return;
 						if (start.kind === 'error') {
 							new Notice(start.reason);
 							redraw();
@@ -200,7 +207,10 @@ export function fillAccountSetting(setting: Setting, pro: SponsorsManager, ui?: 
 		);
 	};
 	redraw();
-	return () => stop();
+	return () => {
+		disposed = true;
+		stop();
+	};
 }
 
 /** Rows for a declarative settings tab (getSettingDefinitions). */
