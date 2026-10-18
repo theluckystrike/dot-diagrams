@@ -2,10 +2,10 @@ import { Keymap, Notice, Plugin, TFile, debounce, normalizePath, type Editor, ty
 import type { SponsorsManager } from './license/index';
 import { createGitHubSponsors } from './license/github-obsidian';
 import { DotBlock } from './block';
-import { LIGHT_PALETTE, fileProblem, findBlockAt, parseFileDirective, plan as makePlan, type Plan } from './dot';
+import { LIGHT_PALETTE, sizeProblem, fileProblem, findBlockAt, parseFileDirective, plan as makePlan, type Plan } from './dot';
 import { SPONSORS, bindPro, isPro, onProChange, resetPro } from './pro';
 import { layoutSvg, readPalette, svgToPng, type Layout } from './render';
-import { DEFAULT_SETTINGS, DotDiagramsSettingTab, normalizeSettings, type DotDiagramsSettings } from './settings';
+import { DEFAULT_SETTINGS, MAX_CHARS, DotDiagramsSettingTab, normalizeSettings, type DotDiagramsSettings } from './settings';
 
 /** How often to ask the license state whether a check is due. It sends a request only when signed in and due (7 days). */
 const PRO_TICK_MS = 6 * 60 * 60 * 1000;
@@ -130,6 +130,11 @@ export default class DotDiagramsPlugin extends Plugin {
 		const block = await this.blockText(source, sourcePath);
 		if (block.problem) {
 			new Notice(`DOT diagram error: ${block.problem}`);
+			return null;
+		}
+		const problem = sizeProblem(block.text, MAX_CHARS, this.settings.maxEdges);
+		if (problem) {
+			new Notice(`DOT diagram error: ${problem}`);
 			return null;
 		}
 		const plan = makePlan(source, {

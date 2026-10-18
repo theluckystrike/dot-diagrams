@@ -1,5 +1,11 @@
 # dot-diagrams
 
+## 1.1.3
+
+### Patch Changes
+
+- f348b90: Reject unknown preset names and apply diagram size limits to SVG and PNG export.
+
 ## 1.1.2
 
 ### Patch Changes

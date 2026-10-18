@@ -75,7 +75,7 @@ To install by hand, copy `main.js`, `manifest.json` and `styles.css` from the la
 2. Write a graph in the DOT language, for example `digraph { a -> b -> c; a -> d }`.
 3. Switch to reading view, or move the cursor out of the block in Live Preview.
 
-The first diagram of a session takes a moment longer, while the engine starts.
+The first diagram must wait for the engine.
 
 Comment lines set options for one block. Put them on their own lines, anywhere in the block:
 
@@ -83,7 +83,7 @@ Comment lines set options for one block. Put them on their own lines, anywhere i
 - `// preset: blueprint` chooses a style preset (Pro).
 - `// file: graphs/build.dot` draws a .dot or .gv file of the vault.
 
-A line that starts with `#` or the form `/* engine: circo */` works too. The first line of each kind wins. An unknown name is not an error: the block draws with the default, and a gray note says why.
+You can also use `#` or `/* engine: circo */`. The first directive of each kind wins. An unknown name uses the default and shows a message.
 
 ## Settings
 
@@ -117,7 +117,7 @@ The Kroki plugin sends your block to a Kroki server, so it needs a network or a 
 
 ### How big is the plugin, and how fast is it?
 
-The plugin file `main.js` is about 0.86 MB, and about 0.82 MB of it is the Graphviz engine. Layout runs on the main thread, and its cost grows fast with tangled graphs. So a block with more than 300 edges is not drawn until you raise the limit.
+The plugin file `main.js` is about 0.86 MB, and about 0.82 MB of it is the Graphviz engine. Layout runs on the main thread, and its cost grows fast with tangled graphs. So a block with more than 300 edges is not drawn until you raise the limit. Copy and export use the same edge limit. The fixed text limit is 300,000 characters.
 
 ### Is the code readable?
 

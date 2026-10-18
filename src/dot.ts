@@ -202,7 +202,7 @@ export const PRESET_NAMES = Object.keys(PRESETS);
 export function buildDefaults(p: Palette, preset: string | null, background?: string): Defaults {
 	const base = themeDefaults(p);
 	if (background) base.graph.bgcolor = background;
-	const over = preset ? PRESETS[preset] : undefined;
+	const over = preset && PRESET_NAMES.includes(preset) ? PRESETS[preset] : undefined;
 	if (!over) return base;
 	return { graph: { ...base.graph, ...over.graph }, node: { ...base.node, ...over.node }, edge: { ...base.edge, ...over.edge } };
 }
@@ -474,7 +474,7 @@ export function countEdges(src: string): number {
 
 /** A message when the source is over the size limits, else null. Layout runs on the main thread, so big graphs are capped. */
 export function sizeProblem(src: string, maxChars: number, maxEdges: number): string | null {
-	if (src.length > maxChars) return `This diagram has ${src.length} characters. The limit is ${maxChars}. Raise it in the DOT Diagrams settings.`;
+	if (src.length > maxChars) return `This diagram has ${src.length} characters. The limit is ${maxChars}. Reduce the graph text.`;
 	const edges = countEdges(src);
 	if (edges > maxEdges) return `This diagram has ${edges} edges. The limit is ${maxEdges}. Raise it in the DOT Diagrams settings.`;
 	return null;
@@ -539,7 +539,7 @@ export function plan(block: string, o: PlanOptions): Plan {
 	if (choice.note) notes.push(choice.note);
 	const wanted = dir.preset ?? (o.defaultPreset || null);
 	let preset: string | null = null;
-	if (wanted && !(wanted in PRESETS)) notes.push(`Unknown preset "${wanted}". Known presets: ${PRESET_NAMES.join(', ')}.`);
+	if (wanted && !PRESET_NAMES.includes(wanted)) notes.push(`Unknown preset "${wanted}". Known presets: ${PRESET_NAMES.join(', ')}.`);
 	else if (wanted && !o.pro) notes.push(`The ${wanted} preset is a Pro feature. Used the theme colors.`);
 	else preset = wanted;
 	const mapped = mapWikilinks(raw, o.links ?? o.pro);

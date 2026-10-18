@@ -180,3 +180,17 @@ describe('plugin', () => {
 		});
 	});
 });
+
+describe('export size limits', () => {
+ it('rejects a graph over the edge limit before layout', async () => {
+  const app = App.createConfigured__({ files: {} });
+  const plugin = new DotDiagramsPlugin(app as never, manifest as never);
+  const raw = 'digraph { ' + Array.from({ length: 302 }, (_, i) => `n${i}`).join(' -> ') + ' }';
+  expect(await plugin.exportSvgText(raw, 'note.md')).toBeNull();
+ });
+ it('rejects a vault DOT file over the character limit', async () => {
+  const app = App.createConfigured__({ files: { 'large.dot': ' '.repeat(300001) } });
+  const plugin = new DotDiagramsPlugin(app as never, manifest as never);
+  expect(await plugin.exportSvgText('// file: large.dot', 'note.md')).toBeNull();
+ });
+});

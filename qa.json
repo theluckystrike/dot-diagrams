@@ -3,7 +3,7 @@
 		"feature": "render",
 		"caption": "A dot block in a note, drawn as a diagram. The colors come from the dark theme.",
 		"note": "Architecture.md",
-		"eval": "(async () => { const P = app.plugins.plugins['dot-diagrams']; const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); P.pro.signOut(); document.body.classList.remove('theme-light'); document.body.classList.add('theme-dark'); app.workspace.trigger('css-change'); const leaf = app.workspace.getLeaf(false); const st = leaf.getViewState(); await leaf.setViewState({ ...st, state: { ...st.state, mode: 'preview', source: false } }); await sleep(1500); return 'ok'; })()",
+		"eval": "(async () => { document.querySelectorAll('.modal-container').forEach(el => el.remove()); const P = app.plugins.plugins['dot-diagrams']; const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); P.pro.signOut(); document.body.classList.remove('theme-light'); document.body.classList.add('theme-dark'); app.workspace.trigger('css-change'); const leaf = app.workspace.getLeaf(false); const st = leaf.getViewState(); await leaf.setViewState({ ...st, state: { ...st.state, mode: 'preview', source: false } }); await sleep(1500); return 'ok'; })()",
 		"wait": 1200
 	},
 	{
@@ -85,5 +85,12 @@
 				"hold": 2000
 			}
 		]
+	},
+	{
+		"feature": "hard-inputs",
+		"caption": "Regression checks for hard inputs.",
+		"note": "Hard inputs.md",
+		"eval": "(async () => { const l=app.workspace.getLeaf(false); const s=l.getViewState(); await l.setViewState({...s,state:{...s.state,mode:'preview',source:false}}); await new Promise(r=>setTimeout(r,1200)); const blocks=Array.from(l.view.containerEl.querySelectorAll('.dot-diagrams')); if(!blocks.some(x=>x.querySelectorAll('g.node').length===300)) throw new Error('Missing 300 node graph'); if(!l.view.containerEl.querySelector('.dot-diagrams-error')?.textContent.includes('line 2')) throw new Error('Missing syntax error line'); if(!Array.from(l.view.containerEl.querySelectorAll('.dot-diagrams-note')).some(x=>x.textContent.includes('Unknown preset'))) throw new Error('Unknown preset not explained'); return 'hard inputs passed'; })()",
+		"wait": 700
 	}
 ]
