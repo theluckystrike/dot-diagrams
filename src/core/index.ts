@@ -18,3 +18,7 @@ export {
 	type HeadingChange,
 } from './headingCase.js';
 export { planZimImport, resolveZimLink, compareZimSources, validZimPath, ZIM_RULES, type ZimSource, type ZimRules, type ZimIssue, type ZimNote, type ZimPlan } from './zim.js';
+
+export { spellFocusRange } from "./spellFocus.js";
+export { findDescendants, descendantRoute, parentLinkTexts, type ParentNode, type ReachableNote } from './descendants.js';
+export { markdownCsvTables, splitMarkdownCsvRow, encodeTableCsv, csvFileStem, TABLE_CSV_LIMIT, type MarkdownCsvTable, type TableCsvOptions } from './tableCsv.js';

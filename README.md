@@ -1,10 +1,12 @@
 # DOT Diagrams
 
-DOT Diagrams draws Graphviz DOT code blocks as diagrams inside your notes. It draws offline, with no server and no installed Graphviz program. The layout engine is inside the plugin as WebAssembly, so your graph never leaves your device.
+DOT Diagrams draws Graphviz DOT code blocks as diagrams inside your notes. It draws offline with bundled Graphviz WebAssembly. No server or installed Graphviz program is needed, so graphs stay on your device.
 
-You write a block with the language `dot` or `graphviz`. DOT Diagrams draws the graph as an SVG in reading view and in Live Preview. The colors follow your theme. If the graph has a mistake, the block shows the line number and the message.
+You write a block with the language `dot` or `graphviz`. DOT Diagrams draws the graph as an SVG in reading view and in Live Preview. The colors follow your theme.
 
 <img src="https://raw.githubusercontent.com/theluckystrike/dot-diagrams/HEAD/docs/dot-diagrams.gif" alt="A note with a dot block drawn as a diagram, then a layout with the neato engine, then a block with a syntax error, then a Pro note whose nodes open other notes" width="720">
+
+Free: offline DOT diagrams, theme colors, line errors. Pro: links between diagram nodes and notes. $15 one time or $5 a month: [Sponsor](https://github.com/sponsors/theluckystrike?metadata_source=dot-diagrams) or [$15 one-time offer](https://github.com/sponsors/theluckystrike/sponsorships?tier_id=666162&metadata_source=dot-diagrams).
 
 ## Features
 
@@ -137,7 +139,9 @@ After a successful check, Pro can work offline for up to 14 days. Sign out or a 
 
 ## Support
 
-Report bugs and ask for features in the GitHub issues of this repository, with your Obsidian version and the DOT text of the block. To support the work, use [GitHub Sponsors](https://github.com/sponsors/theluckystrike).
+Plugin page: [dot-diagrams](https://notemods.com/plugins/dot-diagrams/).
+
+Report bugs or request features in [issues](https://github.com/theluckystrike/dot-diagrams/issues) with your Obsidian version and DOT block.
 
 ## Community
 
