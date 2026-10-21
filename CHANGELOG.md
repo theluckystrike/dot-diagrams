@@ -1,5 +1,11 @@
 # dot-diagrams
 
+## 1.2.0
+
+### Minor Changes
+
+- After a minor or major update, DOT Diagrams opens one What's new tab in the background. It links to notemods.com, where you can send feedback. Turn it off in Settings. Add the Send feedback command. The plugin makes no new network requests.
+
 ## 1.1.4
 
 ### Patch Changes

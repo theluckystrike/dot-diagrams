@@ -1,0 +1,34 @@
+{
+	"id": "dot-diagrams",
+	"name": "DOT Diagrams",
+	"version": "1.2.0",
+	"changes": [
+		"New Send feedback command. It opens a page where you can report a problem or suggest an idea.",
+		"Rejects unknown preset names and applies diagram size limits to SVG and PNG export.",
+		"Wikilink nodes now get the node defaults of the graph."
+	],
+	"changes_user": [
+		"New Send feedback command. It opens a page where you can report a problem or suggest an idea.",
+		"An unknown preset name now falls back to the theme colors with a message, and the size limits now apply to SVG and PNG exports too.",
+		"Nodes made from wikilinks now use the graph's default node style."
+	],
+	"tip": "Add '// engine: neato' to a dot block to use a spring layout.",
+	"thanks": "Hi, I am Michael, a solo developer in Poland. DOT Diagrams is one of over 100 small plugins that I make. Thank you for keeping it in your editor.",
+	"related": [
+		{
+			"id": "visual-line-numbers",
+			"name": "Visual Line Numbers",
+			"blurb": "Show a line number for each wrapped row in the editor."
+		},
+		{
+			"id": "shortcuts-bridge",
+			"name": "Shortcuts Bridge",
+			"blurb": "Run Apple Shortcuts with selected text or note details."
+		},
+		{
+			"id": "hr-fold-stop",
+			"name": "Fold Stop",
+			"blurb": "Fold a heading to the first horizontal rule at the top level."
+		}
+	]
+}

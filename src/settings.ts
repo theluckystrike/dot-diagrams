@@ -3,6 +3,7 @@ import { sponsorsSettingItems } from './license/github-obsidian';
 import { PRESET_NAMES, isEngine, type Engine } from './dot';
 import { PRO_UI, isPro } from './pro';
 import type DotDiagramsPlugin from './main';
+import { helloSettingItems } from './hello/settings';
 
 export interface DotDiagramsSettings {
 	/** Layout engine for blocks that have no `// engine:` line. */
@@ -53,6 +54,11 @@ export class DotDiagramsSettingTab extends PluginSettingTab {
 	}
 
 	getSettingDefinitions(): SettingDefinitionItem[] {
+		// The product rows, then the "More from NoteMods" card (packages/hello).
+		return [...this.productSettingDefinitions(), ...helloSettingItems()];
+	}
+
+	productSettingDefinitions(): SettingDefinitionItem[] {
 		const presets: Record<string, string> = { '': 'Theme colors' };
 		for (const n of PRESET_NAMES) presets[n] = `${n} (Pro)`;
 		return [

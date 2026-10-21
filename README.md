@@ -1,8 +1,8 @@
 # DOT Diagrams
 
-DOT Diagrams draws Graphviz DOT code blocks as diagrams inside your notes. It draws offline with bundled Graphviz WebAssembly. No server or installed Graphviz program is needed, so graphs stay on your device.
+DOT Diagrams draws Graphviz DOT code blocks as diagrams inside your notes. It draws offline with bundled Graphviz WebAssembly, so it needs no server or Graphviz install, and graphs stay on your device.
 
-You write a block with the language `dot` or `graphviz`. DOT Diagrams draws the graph as an SVG in reading view and in Live Preview. The colors follow your theme.
+It works in reading view and Live Preview, and the colors follow your theme.
 
 <img src="https://raw.githubusercontent.com/theluckystrike/dot-diagrams/HEAD/docs/dot-diagrams.gif" alt="A note with a dot block drawn as a diagram, then a layout with the neato engine, then a block with a syntax error, then a Pro note whose nodes open other notes" width="720">
 
@@ -12,55 +12,55 @@ Free: offline DOT diagrams, theme colors, line errors. Pro: links between diagra
 
 ### Diagrams in the note
 
-A `dot` or `graphviz` block draws as an SVG, and draws again when you edit it. In Live Preview the block shows the diagram until you move the cursor into it. Buttons appear when you hover over a diagram. "Copy" puts the SVG on the clipboard in light colors on white, so you can paste it into a slide.
+A `dot` or `graphviz` block draws as an SVG, and draws again when you edit it. In Live Preview the block shows the diagram until you move the cursor into it. Buttons appear on hover. "Copy" puts the SVG on the clipboard in light colors on white, ready for a slide.
 
 <img src="https://raw.githubusercontent.com/theluckystrike/dot-diagrams/HEAD/docs/render.png" alt="A note with a left-to-right diagram of a checkout service, drawn from a dot block" width="720">
 
 ### Colors that follow your theme
 
-The plugin reads the text, line and fill colors of the current theme and gives them to Graphviz as defaults, on a transparent background. When you change the theme, the open diagrams draw again. Colors that you set in the DOT source, such as `color=red`, win over the defaults.
+The plugin passes the text, line and fill colors of the current theme to Graphviz as defaults, on a transparent background. Open diagrams draw again when you change the theme. Colors that you set in the DOT source, such as `color=red`, win over the defaults.
 
 <img src="https://raw.githubusercontent.com/theluckystrike/dot-diagrams/HEAD/docs/theme.png" alt="The same checkout diagram on a light theme" width="720">
 
 ### Error messages with the line number
 
-When Graphviz cannot read the block, DOT Diagrams draws nothing and shows a red box with the line number, the message from Graphviz and the text of that line. The line number is the line of your block, because the plugin adds its defaults on the line of the opening brace.
+When Graphviz cannot read the block, DOT Diagrams draws nothing and shows a red box with the line number, the message from Graphviz and the text of that line. The line number matches your block, because the plugin adds its defaults on the line of the opening brace.
 
 <img src="https://raw.githubusercontent.com/theluckystrike/dot-diagrams/HEAD/docs/error.png" alt="A red box that says DOT diagram error on line 3, syntax error near a semicolon, and shows the line b -> ;" width="720">
 
 ### Three layout engines
 
-The default engine is `dot`, which draws layers. Write a comment on its own line to pick another one: `// engine: neato` draws a spring layout and `// engine: circo` draws a circle layout. Both are free.
+The default engine is `dot`, which draws layers. A comment on its own line picks another: `// engine: neato` draws a spring layout and `// engine: circo` draws a circle layout. Both are free.
 
 <img src="https://raw.githubusercontent.com/theluckystrike/dot-diagrams/HEAD/docs/engines.png" alt="Two diagrams of the same kind of network, one drawn with neato and one drawn with circo" width="720">
 
 ### Diagrams from a DOT file
 
-Name a `.dot` or `.gv` file of your vault in a block, and the block draws it, and draws it again when the file changes. It is free.
+Name a `.dot` or `.gv` vault file in a block to draw it. It draws again when the file changes. It is free.
 
 ```dot
 // file: graphs/build.dot
 ```
 
-The path starts at the vault root. A bare name or a link such as `[[build.dot]]` finds the file the way a link does. Put only comment lines in that block, such as `// engine:` and `// preset:` lines, which win over the file's own. A block with its own graph ignores the line. A Graphviz error names the file and the line in it.
+The path starts at the vault root. A bare name or a link such as `[[build.dot]]` finds the file the way a link does. Put only comment lines in that block. Its `// engine:` and `// preset:` lines win over the file's own. A block with its own graph ignores the line. A Graphviz error names the file and line.
 
 <img src="https://raw.githubusercontent.com/theluckystrike/dot-diagrams/HEAD/docs/file.png" alt="A note in reading view with the call graph that the plugin drew from the vault file call-graph.dot" width="720">
 
 ### Notes that open from nodes (Pro)
 
-With Pro, a node that is a wikilink opens its note when you select it. Hold Ctrl (Cmd on macOS) to open it in a new tab. Three forms work: a quoted node id, such as `"[[Architecture]]"` or `"[[Notes/Plan|Plan]]"`, a link in the URL attribute such as `URL="[[Architecture]]"`, and a link in a label such as `label="Read [[Syntax error]]"`. The node shows the note name or the alias, and it gets the `node [...]` defaults of the graph, such as `node [shape=box]`. A label or URL that you set on the node wins. Without Pro, the same nodes show the name as plain text.
+With Pro, select a wikilink node to open its note. Hold Ctrl (Cmd on macOS) to open it in a new tab. Three forms work: a quoted node id, such as `"[[Architecture]]"` or `"[[Notes/Plan|Plan]]"`, a link in the URL attribute such as `URL="[[Architecture]]"`, and a link in a label such as `label="Read [[Syntax error]]"`. The node shows the note name or the alias, and it gets the `node [...]` defaults of the graph, such as `node [shape=box]`. A label or URL that you set on the node wins. Without Pro, the same nodes show the name as plain text.
 
 <img src="https://raw.githubusercontent.com/theluckystrike/dot-diagrams/HEAD/docs/links.png" alt="A project map where each node is the name of a note, shown with a pointer on one node" width="720">
 
 ### Export to SVG and PNG (Pro)
 
-With Pro, the second and third buttons, or the commands "Export the diagram at the cursor to SVG" and "Export the diagram at the cursor to PNG", save the diagram in the attachment folder of the note. The file is light on white and has no note links.
+With Pro, the second and third buttons, or the commands "Export the diagram at the cursor to SVG" and "Export the diagram at the cursor to PNG", save it in the attachment folder of the note. The file is light on white and has no note links.
 
 <img src="https://raw.githubusercontent.com/theluckystrike/dot-diagrams/HEAD/docs/export.png" alt="An exported SVG file of the checkout diagram, open in Obsidian" width="720">
 
 ### More engines and style presets (Pro)
 
-With Pro, `fdp`, `sfdp`, `twopi` and `osage` also work. A comment such as `// preset: blueprint` styles one block. The presets are `clean`, `blueprint`, `mono`, `pastel` and `contrast`. A preset sets its own colors, so it does not follow the theme.
+With Pro, `fdp`, `sfdp`, `twopi` and `osage` also work. A comment such as `// preset: blueprint` styles one block. The presets are `clean`, `blueprint`, `mono`, `pastel` and `contrast`. A preset sets its own colors and ignores the theme.
 
 <img src="https://raw.githubusercontent.com/theluckystrike/dot-diagrams/HEAD/docs/presets.png" alt="A blueprint-style diagram and a pastel twopi diagram" width="720">
 
@@ -69,7 +69,7 @@ With Pro, `fdp`, `sfdp`, `twopi` and `osage` also work. A comment such as `// pr
 1. Open "Settings → Community plugins" and turn off restricted mode.
 2. Select "Browse", search for "DOT Diagrams", then "Install" and "Enable".
 
-To install by hand, copy `main.js`, `manifest.json` and `styles.css` from the latest release into `<vault>/.obsidian/plugins/dot-diagrams/` and enable the plugin. You need Obsidian 1.13.4 or later.
+To install by hand, copy `main.js`, `manifest.json` and `styles.css` from the latest release into `<vault>/.obsidian/plugins/dot-diagrams/`, then enable it. You need Obsidian 1.13.4 or later.
 
 ## Usage
 
@@ -79,7 +79,7 @@ To install by hand, copy `main.js`, `manifest.json` and `styles.css` from the la
 
 The first diagram must wait for the engine.
 
-Comment lines set options for one block. Put them on their own lines, anywhere in the block:
+Comment lines on their own lines, anywhere in a block, set options for that block:
 
 - `// engine: neato` chooses the layout engine.
 - `// preset: blueprint` chooses a style preset (Pro).
@@ -88,6 +88,8 @@ Comment lines set options for one block. Put them on their own lines, anywhere i
 You can also use `#` or `/* engine: circo */`. The first directive of each kind wins. An unknown name uses the default and shows a message.
 
 ## Settings
+
+After a minor or major update, this plugin opens one What's new tab in the background. The tab and settings card suggest other NoteMods plugins and Zovo Chat and link to notemods.com for feedback ([privacy](https://notemods.com/privacy/)). The tab sends no data. Turn the tab off in Settings.
 
 | Setting | What it does |
 | --- | --- |
@@ -103,7 +105,7 @@ The settings tab also has the Pro section: sign in, the status line and Refresh.
 
 ### Does my graph leave my device?
 
-No. The renderer is a WebAssembly build of Graphviz inside `main.js`, and a diagram draws on your device with no request. DOT Diagrams also removes `<script>` elements, event handlers, remote images and `javascript:` links from the SVG.
+No. The Graphviz WebAssembly build inside `main.js` draws each diagram on your device with no request. DOT Diagrams also removes `<script>` elements, event handlers, remote images and `javascript:` links from the SVG.
 
 ### Can I use `![[graph.dot]]` instead?
 
@@ -111,15 +113,15 @@ Not yet. Obsidian gives plugins no public way to draw that embed in Live Preview
 
 ### Why not use Mermaid?
 
-Mermaid is a different language and is built into Obsidian. Use DOT Diagrams when you have DOT, or when another tool gives you DOT, such as a call graph.
+Mermaid is a different language, built into Obsidian. Use DOT Diagrams when you have DOT, for example a call graph from another tool.
 
 ### How is this different from the Kroki plugin?
 
-The Kroki plugin sends your block to a Kroki server, so it needs a network or a server that you run. DOT Diagrams draws on your device.
+The Kroki plugin sends your block to a Kroki server, so it needs a network or your own server. DOT Diagrams draws locally.
 
 ### How big is the plugin, and how fast is it?
 
-The plugin file `main.js` is about 0.86 MB, and about 0.82 MB of it is the Graphviz engine. Layout runs on the main thread, and its cost grows fast with tangled graphs. So a block with more than 300 edges is not drawn until you raise the limit. Copy and export use the same edge limit. The fixed text limit is 300,000 characters.
+The plugin file `main.js` is about 0.87 MB, and about 0.82 MB of it is the Graphviz engine. Layout runs on the main thread, and its cost grows fast with tangled graphs, so a block over the edge limit (default 300) is not drawn. Copy and export use the same limit. The fixed text limit is 300,000 characters.
 
 ### Is the code readable?
 

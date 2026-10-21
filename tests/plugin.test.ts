@@ -98,7 +98,7 @@ describe('plugin', () => {
 		}) as never;
 		await plugin.onload();
 		expect(langs).toEqual(['dot', 'graphviz']);
-		expect(ids).toEqual(['export-svg', 'export-png']);
+		expect(ids).toEqual(['show-whats-new', 'send-feedback', 'export-svg', 'export-png']);
 		plugin.onunload();
 	});
 
