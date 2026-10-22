@@ -20,7 +20,7 @@ export interface HelloContent {
 	version: string;
 	/** Recent change lines (changes_user when the content has it). Can be empty when there is a tip. */
 	changes: string[];
-	/** One-line feature tip, shown under "Did you know" when there are no change lines. */
+	/** One-line feature tip, shown under "Did you know" below the change lines. */
 	tip: string;
 	thanks: string;
 	related: HelloRelated[];

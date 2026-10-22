@@ -11,6 +11,27 @@
 	margin: 0 auto;
 }
 
+/* "// width: natural": the size that Graphviz gives. A wider diagram scrolls in the block. */
+.dot-diagrams-natural .dot-diagrams-svg {
+	max-width: none;
+}
+
+/* "// width: 60%" or "// width: 480px": the block sets --dot-diagrams-width. A wider diagram scrolls in the block. */
+.dot-diagrams-sized .dot-diagrams-svg {
+	width: var(--dot-diagrams-width);
+	max-width: none;
+}
+
+.dot-diagrams-align-left .dot-diagrams-svg {
+	margin-left: 0;
+	margin-right: auto;
+}
+
+.dot-diagrams-align-right .dot-diagrams-svg {
+	margin-left: auto;
+	margin-right: 0;
+}
+
 .dot-diagrams-link {
 	cursor: pointer;
 }

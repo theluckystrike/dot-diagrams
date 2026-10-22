@@ -44,8 +44,8 @@ describe('scan', () => {
 
 describe('directives and engines', () => {
 	it('reads engine and preset from comment lines, first one wins', () => {
-		expect(parseDirectives('// engine: Neato\n// layout: circo\n# preset = mono\ngraph {}')).toEqual({ engine: 'neato', preset: 'mono' });
-		expect(parseDirectives('graph { // engine: neato\n}')).toEqual({ engine: null, preset: null });
+		expect(parseDirectives('// engine: Neato\n// layout: circo\n# preset = mono\ngraph {}')).toEqual({ engine: 'neato', preset: 'mono', width: null, align: null });
+		expect(parseDirectives('graph { // engine: neato\n}')).toEqual({ engine: null, preset: null, width: null, align: null });
 	});
 	it('gives free users dot, neato and circo only', () => {
 		expect(resolveEngine('circo', 'dot', false)).toEqual({ engine: 'circo', note: null });

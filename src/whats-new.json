@@ -1,16 +1,10 @@
 {
 	"id": "dot-diagrams",
 	"name": "DOT Diagrams",
-	"version": "1.2.0",
+	"version": "1.3.0",
 	"changes": [
-		"New Send feedback command. It opens a page where you can report a problem or suggest an idea.",
-		"Rejects unknown preset names and applies diagram size limits to SVG and PNG export.",
-		"Wikilink nodes now get the node defaults of the graph."
-	],
-	"changes_user": [
-		"New Send feedback command. It opens a page where you can report a problem or suggest an idea.",
-		"An unknown preset name now falls back to the theme colors with a message, and the size limits now apply to SVG and PNG exports too.",
-		"Nodes made from wikilinks now use the graph's default node style."
+		"Set the width of one diagram with a line such as // width: 60%, // width: 480px or // width: natural.",
+		"// align: left, center or right moves a diagram. Two new settings give the default width and alignment."
 	],
 	"tip": "Add '// engine: neato' to a dot block to use a spring layout.",
 	"thanks": "Hi, I am Michael, a solo developer in Poland. DOT Diagrams is one of over 100 small plugins that I make. Thank you for keeping it in your editor.",

@@ -1,6 +1,6 @@
 import { PluginSettingTab, type SettingDefinitionItem } from 'obsidian';
 import { sponsorsSettingItems } from './license/github-obsidian';
-import { PRESET_NAMES, isEngine, type Engine } from './dot';
+import { PRESET_NAMES, isAlign, isEngine, isWidthMode, type Align, type Engine, type WidthMode } from './dot';
 import { PRO_UI, isPro } from './pro';
 import type DotDiagramsPlugin from './main';
 import { helloSettingItems } from './hello/settings';
@@ -16,6 +16,10 @@ export interface DotDiagramsSettings {
 	showToolbar: boolean;
 	/** PNG export size: 1 to 4 times the size at 96 dpi. */
 	exportScale: number;
+	/** Width for blocks without a `// width:` line: fit to the note, or the size that Graphviz gives. */
+	defaultWidth: WidthMode;
+	/** Alignment for blocks without an `// align:` line. */
+	defaultAlign: Align;
 }
 
 export const MAX_EDGES_MIN = 50;
@@ -28,6 +32,8 @@ export const DEFAULT_SETTINGS: DotDiagramsSettings = {
 	maxEdges: 300,
 	showToolbar: true,
 	exportScale: 2,
+	defaultWidth: 'fit',
+	defaultAlign: 'center',
 };
 
 const clampInt = (v: unknown, lo: number, hi: number, fallback: number): number =>
@@ -42,6 +48,8 @@ export function normalizeSettings(saved: Partial<DotDiagramsSettings> | null | u
 		maxEdges: clampInt(s.maxEdges, MAX_EDGES_MIN, MAX_EDGES_MAX, DEFAULT_SETTINGS.maxEdges),
 		showToolbar: typeof s.showToolbar === 'boolean' ? s.showToolbar : DEFAULT_SETTINGS.showToolbar,
 		exportScale: clampInt(s.exportScale, 1, 4, DEFAULT_SETTINGS.exportScale),
+		defaultWidth: typeof s.defaultWidth === 'string' && isWidthMode(s.defaultWidth) ? s.defaultWidth : DEFAULT_SETTINGS.defaultWidth,
+		defaultAlign: typeof s.defaultAlign === 'string' && isAlign(s.defaultAlign) ? s.defaultAlign : DEFAULT_SETTINGS.defaultAlign,
 	};
 }
 
@@ -77,6 +85,16 @@ export class DotDiagramsSettingTab extends PluginSettingTab {
 				name: 'Default style preset',
 				desc: 'Pro. Used by blocks without a "// preset:" line. Without Pro, diagrams use the colors of your theme.',
 				control: { type: 'dropdown', key: 'defaultPreset', defaultValue: DEFAULT_SETTINGS.defaultPreset, options: presets },
+			},
+			{
+				name: 'Default diagram width',
+				desc: 'Used by blocks without a "// width:" line. Fit shrinks a wide diagram to the note width. Natural keeps the size that Graphviz gives, and a wide diagram scrolls.',
+				control: { type: 'dropdown', key: 'defaultWidth', defaultValue: DEFAULT_SETTINGS.defaultWidth, options: { fit: 'Fit to the note', natural: 'Natural size' } },
+			},
+			{
+				name: 'Default alignment',
+				desc: 'Used by blocks without an "// align:" line.',
+				control: { type: 'dropdown', key: 'defaultAlign', defaultValue: DEFAULT_SETTINGS.defaultAlign, options: { left: 'Left', center: 'Center', right: 'Right' } },
 			},
 			{
 				name: 'Show buttons above diagrams',

@@ -1,6 +1,6 @@
 import { MarkdownRenderChild, setIcon } from 'obsidian';
 import { MAX_CHARS } from './settings';
-import { excerptLine, hrefTarget, sizeProblem, type DotError } from './dot';
+import { ALIGNS, excerptLine, hrefTarget, sizeProblem, viewOptions, type DotError, type ViewOptions } from './dot';
 import { isPro } from './pro';
 import { countNodes, parseSvg, sanitizeSvg } from './render';
 import type DotDiagramsPlugin from './main';
@@ -59,11 +59,24 @@ export class DotBlock extends MarkdownRenderChild {
 		const svg = parseSvg(result.layout.svg, el.doc);
 		if (!svg) return this.showError(null, 'Graphviz returned something that is not an SVG.');
 		sanitizeSvg(svg, isPro());
+		const { defaultWidth, defaultAlign } = this.plugin.settings;
+		const view = viewOptions(this.source, block.fileText, { width: defaultWidth, align: defaultAlign });
 		el.empty();
+		this.applyView(view);
 		this.addToolbar(el);
 		el.appendChild(svg);
 		this.nodes = countNodes(svg);
-		for (const note of result.plan.notes) el.createDiv({ cls: 'dot-diagrams-note', text: note });
+		for (const note of [...result.plan.notes, ...view.notes]) el.createDiv({ cls: 'dot-diagrams-note', text: note });
+	}
+
+	/** Width and alignment of the diagram: classes on the block, and the CSS variable --dot-diagrams-width for a percent or pixel width. */
+	private applyView(view: ViewOptions): void {
+		const el = this.containerEl;
+		const sized = view.width !== 'fit' && view.width !== 'natural';
+		el.toggleClass('dot-diagrams-natural', view.width === 'natural');
+		el.toggleClass('dot-diagrams-sized', sized);
+		el.setCssProps({ '--dot-diagrams-width': sized ? view.width : '' });
+		for (const a of ALIGNS) el.toggleClass(`dot-diagrams-align-${a}`, a === view.align);
 	}
 
 	private showMessage(text: string): void {

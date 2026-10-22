@@ -12,19 +12,19 @@ Free: offline DOT diagrams, theme colors, line errors. Pro: links between diagra
 
 ### Diagrams in the note
 
-A `dot` or `graphviz` block draws as an SVG, and draws again when you edit it. In Live Preview the block shows the diagram until you move the cursor into it. Buttons appear on hover. "Copy" puts the SVG on the clipboard in light colors on white, ready for a slide.
+A `dot` or `graphviz` block draws as an SVG, and draws again when you edit it. In Live Preview the block shows the diagram until you move the cursor into it. Buttons appear on hover. "Copy" puts the SVG on the clipboard, light on white.
 
 <img src="https://raw.githubusercontent.com/theluckystrike/dot-diagrams/HEAD/docs/render.png" alt="A note with a left-to-right diagram of a checkout service, drawn from a dot block" width="720">
 
 ### Colors that follow your theme
 
-The plugin passes the text, line and fill colors of the current theme to Graphviz as defaults, on a transparent background. Open diagrams draw again when you change the theme. Colors that you set in the DOT source, such as `color=red`, win over the defaults.
+Diagrams use the text, line and fill colors of your theme on a transparent background, and draw again when you change the theme. Colors that you set in the DOT source, such as `color=red`, win.
 
 <img src="https://raw.githubusercontent.com/theluckystrike/dot-diagrams/HEAD/docs/theme.png" alt="The same checkout diagram on a light theme" width="720">
 
 ### Error messages with the line number
 
-When Graphviz cannot read the block, DOT Diagrams draws nothing and shows a red box with the line number, the message from Graphviz and the text of that line. The line number matches your block, because the plugin adds its defaults on the line of the opening brace.
+When Graphviz cannot read the block, DOT Diagrams draws nothing and shows a red box with the line number, the message and the text of that line. The number matches your block.
 
 <img src="https://raw.githubusercontent.com/theluckystrike/dot-diagrams/HEAD/docs/error.png" alt="A red box that says DOT diagram error on line 3, syntax error near a semicolon, and shows the line b -> ;" width="720">
 
@@ -42,19 +42,31 @@ Name a `.dot` or `.gv` vault file in a block to draw it. It draws again when the
 // file: graphs/build.dot
 ```
 
-The path starts at the vault root. A bare name or a link such as `[[build.dot]]` finds the file the way a link does. Put only comment lines in that block. Its `// engine:` and `// preset:` lines win over the file's own. A block with its own graph ignores the line. A Graphviz error names the file and line.
+The path starts at the vault root. A bare name or `[[build.dot]]` finds the file like a link. Put only comment lines in that block. Its option lines win over the file's own. A block with its own graph ignores the line. An error names the file and line.
 
 <img src="https://raw.githubusercontent.com/theluckystrike/dot-diagrams/HEAD/docs/file.png" alt="A note in reading view with the call graph that the plugin drew from the vault file call-graph.dot" width="720">
 
+### Width and alignment
+
+A wide graph shrinks to the note width. A comment line sets the size and place of one diagram:
+
+- `// width: natural` keeps the Graphviz size. A wider diagram scrolls in the block.
+- `// width: 60%` (10% to 100%) or `// width: 480px` (50px to 4000px) sets the width. The height follows.
+- `// align: left`, `center` or `right` moves the diagram.
+
+A `// file:` block also reads these lines from the file. Copy and export keep the natural size.
+
+<img src="https://raw.githubusercontent.com/theluckystrike/dot-diagrams/HEAD/docs/width.png" alt="A wide pipeline diagram at its natural size that scrolls in the block, and a small status graph at 40% width on the left" width="720">
+
 ### Notes that open from nodes (Pro)
 
-With Pro, select a wikilink node to open its note. Hold Ctrl (Cmd on macOS) to open it in a new tab. Three forms work: a quoted node id, such as `"[[Architecture]]"` or `"[[Notes/Plan|Plan]]"`, a link in the URL attribute such as `URL="[[Architecture]]"`, and a link in a label such as `label="Read [[Syntax error]]"`. The node shows the note name or the alias, and it gets the `node [...]` defaults of the graph, such as `node [shape=box]`. A label or URL that you set on the node wins. Without Pro, the same nodes show the name as plain text.
+With Pro, select a wikilink node to open its note. Hold Ctrl (Cmd on macOS) for a new tab. Three forms work: a quoted node id such as `"[[Notes/Plan|Plan]]"`, `URL="[[Architecture]]"`, and a label such as `label="Read [[Syntax error]]"`. The node shows the note name or alias and gets the graph's `node [...]` defaults. A label or URL that you set wins. Without Pro, the nodes show the name as plain text.
 
 <img src="https://raw.githubusercontent.com/theluckystrike/dot-diagrams/HEAD/docs/links.png" alt="A project map where each node is the name of a note, shown with a pointer on one node" width="720">
 
 ### Export to SVG and PNG (Pro)
 
-With Pro, the second and third buttons, or the commands "Export the diagram at the cursor to SVG" and "Export the diagram at the cursor to PNG", save it in the attachment folder of the note. The file is light on white and has no note links.
+With Pro, the export buttons or the two "Export the diagram at the cursor" commands save the diagram in the attachment folder of the note, light on white, with no note links.
 
 <img src="https://raw.githubusercontent.com/theluckystrike/dot-diagrams/HEAD/docs/export.png" alt="An exported SVG file of the checkout diagram, open in Obsidian" width="720">
 
@@ -84,8 +96,9 @@ Comment lines on their own lines, anywhere in a block, set options for that bloc
 - `// engine: neato` chooses the layout engine.
 - `// preset: blueprint` chooses a style preset (Pro).
 - `// file: graphs/build.dot` draws a .dot or .gv file of the vault.
+- `// width: 60%` and `// align: left` set the size and place of the diagram.
 
-You can also use `#` or `/* engine: circo */`. The first directive of each kind wins. An unknown name uses the default and shows a message.
+`#` and `/* engine: circo */` comments also work. The first line of each kind wins. An unknown value uses the default and shows a message.
 
 ## Settings
 
@@ -95,6 +108,8 @@ After a minor or major update, this plugin opens one What's new tab in the backg
 | --- | --- |
 | Default layout engine | The engine for blocks without an `// engine:` line. Default `dot`. fdp, sfdp, twopi and osage need Pro. |
 | Default style preset | Pro. The preset for blocks without a `// preset:` line. Empty means the theme colors. |
+| Default diagram width | For blocks without a `// width:` line. Fit (default) or natural. |
+| Default alignment | For blocks without an `// align:` line. Left, center (default) or right. |
 | Show buttons above diagrams | Shows the Copy, Export SVG and Export PNG buttons on hover. On by default. |
 | Edge limit | A block with more edges is not drawn. From 50 to 20,000, default 300. |
 | PNG export scale | Pro. 1 to 4 times the size at 96 dpi, default 2. |
@@ -113,7 +128,7 @@ Not yet. Obsidian gives plugins no public way to draw that embed in Live Preview
 
 ### Why not use Mermaid?
 
-Mermaid is a different language, built into Obsidian. Use DOT Diagrams when you have DOT, for example a call graph from another tool.
+Mermaid is a different language. Use DOT Diagrams for DOT, such as a call graph from another tool.
 
 ### How is this different from the Kroki plugin?
 
@@ -121,11 +136,11 @@ The Kroki plugin sends your block to a Kroki server, so it needs a network or yo
 
 ### How big is the plugin, and how fast is it?
 
-The plugin file `main.js` is about 0.87 MB, and about 0.82 MB of it is the Graphviz engine. Layout runs on the main thread, and its cost grows fast with tangled graphs, so a block over the edge limit (default 300) is not drawn. Copy and export use the same limit. The fixed text limit is 300,000 characters.
+`main.js` is about 0.87 MB, mostly the Graphviz engine. Layout runs on the main thread and its cost grows fast with tangled graphs, so a block over the edge limit (default 300) is not drawn. Copy and export use the same limit. The text limit is 300,000 characters.
 
 ### Is the code readable?
 
-`main.js` is one minified file, like most plugins. The engine is the distribution file of the Apache-2.0 library @hpcc-js/wasm-graphviz 1.29.1, with two changes that remove its unused network code. The WebAssembly binary sits inside it as compressed ASCII text. `THIRD-PARTY.md` lists the licenses and the changes.
+`main.js` is one minified file, like most plugins. The engine is the Apache-2.0 library @hpcc-js/wasm-graphviz 1.29.1, with its unused network code removed. `THIRD-PARTY.md` lists the licenses and the changes.
 
 ## Payment, account and network
 

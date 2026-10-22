@@ -1,5 +1,11 @@
 # dot-diagrams
 
+## 1.3.0
+
+### Minor Changes
+
+- Set the width and alignment of each diagram with a `// width:` or `// align:` line. Two new settings give the defaults.
+
 ## 1.2.0
 
 ### Minor Changes

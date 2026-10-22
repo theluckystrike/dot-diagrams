@@ -37,6 +37,13 @@
 		"wait": 1200
 	},
 	{
+		"feature": "width",
+		"caption": "A wide graph at its natural size, which scrolls in the block, and a small graph at 40% on the left.",
+		"note": "Width and alignment.md",
+		"eval": "(async () => { const P = app.plugins.plugins['dot-diagrams']; const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); P.pro.signOut(); document.body.classList.remove('theme-light'); document.body.classList.add('theme-dark'); app.workspace.trigger('css-change'); const leaf = app.workspace.getLeaf(false); const st = leaf.getViewState(); await leaf.setViewState({ ...st, state: { ...st.state, mode: 'preview', source: false } }); await sleep(1500); return 'ok'; })()",
+		"wait": 1200
+	},
+	{
 		"feature": "links",
 		"caption": "Pro: every node of this map is a wikilink. Select a node to open its note.",
 		"note": "Project map.md",

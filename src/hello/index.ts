@@ -3,7 +3,7 @@
 // sends no request and counts nothing. The decision logic is host-free and lives in the core package (core/hello.ts);
 // this file is the Obsidian part.
 // Call setupHello(this, content) at the start of Plugin.onload. It does not wait for disk reads: the check runs
-// after the workspace layout is ready.
+// after the workspace layout is ready and after the product's first loadData() (see HelloOptions.after).
 import { ItemView, Platform, Setting, type Plugin, type WorkspaceLeaf } from 'obsidian';
 import {
 	HELLO_DATA_KEY,
@@ -19,6 +19,7 @@ import {
 	type HelloDecision,
 	type HelloLastShown,
 	type HelloState,
+	readHelloState,
 } from '../core/index';
 
 /** Brand names stay out of sentence case. */
@@ -32,7 +33,17 @@ export interface HelloOptions {
 	command?: boolean;
 	/** Add the "Send feedback" command. Default true. */
 	feedbackCommand?: boolean;
+	/**
+	 * The start check waits for this before it reads data.json and writes the hello state. Use it when the product
+	 * hands its data over from an earlier instance (disable and enable, a module update), for example
+	 * `after: () => this.loading`. Without it, the check waits for the product's first loadData() to finish, at most
+	 * HELLO_PRODUCT_WAIT_MS. A product that waits for its old instance before it reads its data is then safe.
+	 */
+	after?: () => unknown;
 }
+
+/** The longest wait for the product's first loadData() before the start check runs without it. */
+export const HELLO_PRODUCT_WAIT_MS = 30_000;
 
 /** Vault localStorage (App.loadLocalStorage, since 1.8.7), checked at run time so an older app never breaks. */
 interface VaultStorage {
@@ -98,7 +109,10 @@ export function renderWhatsNew(el: HTMLElement, hello: HelloController, close: (
 		page.createEl('h2', { text: 'Recent changes' });
 		const ul = page.createEl('ul', { cls: `${HELLO_CLS}-changes` });
 		for (const line of c.changes) ul.createEl('li', { text: line });
-	} else if (c?.tip) {
+	}
+	// The tip is its own short block under the changes. The first hello release always has a change line (Send
+	// feedback), so a tip shown only without change lines never showed.
+	if (c?.tip) {
 		page.createEl('h2', { text: 'Did you know' });
 		page.createEl('p', { cls: `${HELLO_CLS}-tip`, text: c.tip });
 	}
@@ -123,7 +137,7 @@ export function renderWhatsNew(el: HTMLElement, hello: HelloController, close: (
 		.addButton((b) => b.setButtonText('Close').onClick(close));
 	new Setting(page)
 		.setName("Show what's new after updates")
-		.setDesc('Turn off to never open this tab again. The same switch is in the plugin settings.')
+		.setDesc(`${HELLO_TOGGLE_OFF} The same switch is in the plugin settings.`)
 		.addToggle((t) => t.setValue(hello.enabled).onChange((v) => void hello.setEnabled(v)));
 }
 
@@ -140,6 +154,15 @@ function safely<T>(fn: () => T): T | null {
 
 const isRecord = (v: unknown): v is Record<string, unknown> => v !== null && typeof v === 'object' && !Array.isArray(v);
 
+/** True when the raw key value on disk already holds this state, so a write would change nothing. */
+function sameState(raw: unknown, state: HelloState): boolean {
+	const disk = raw === undefined || raw === null ? null : readHelloState(raw);
+	if (!disk) return raw === undefined && state.lastVersion === HELLO_DEFAULT_STATE.lastVersion && state.show === HELLO_DEFAULT_STATE.show;
+	return disk.lastVersion === state.lastVersion && disk.show === state.show;
+}
+
+type Write = 'same' | 'written' | 'not-object';
+
 /** The controller that setupHello made for this plugin, or null before onload and after unload. */
 export function currentHello(): HelloController | null {
 	return current;
@@ -153,8 +176,12 @@ type Early = { ok: true; data: unknown } | { ok: false };
  * The state lives in the plugin's own data.json under HELLO_DATA_KEY, so it travels with the plugin settings
  * (Obsidian Sync, iCloud, git). Product settings code drops unknown keys and saves its whole settings object, so
  * setupHello wraps plugin.saveData: every product save gets the key added back, and all writes (product and hello)
- * run one after the other. The hello write reads data.json again inside that queue, so it never writes old
- * product settings back.
+ * of this instance run one after the other.
+ *
+ * An earlier instance of the same plugin (disable and enable, a module update) has its own queue and can still save.
+ * So the hello write (1) never runs when data.json already holds the state, (2) waits for the product's first
+ * loadData() or for options.after, so it comes after the old instance's last save when the product waits for that
+ * save before it reads, and (3) reads data.json again in the queue just before it writes and changes only its key.
  */
 export class HelloController {
 	readonly viewType: string;
@@ -173,6 +200,9 @@ export class HelloController {
 	private toggled: boolean | null = null;
 	private unloaded = false;
 	private queue: Promise<unknown> = Promise.resolve();
+	/** Resolves when the product's first loadData() call settled. */
+	private readonly productRead: Promise<void>;
+	private readonly after: (() => unknown) | null;
 	private readonly loadRaw: () => Promise<unknown>;
 	private readonly saveRaw: (data: unknown) => Promise<void>;
 
@@ -189,8 +219,17 @@ export class HelloController {
 		this.content = normalizeHelloContent(rawContent, m);
 		this.loadRaw = plugin.loadData.bind(plugin) as () => Promise<unknown>;
 		this.saveRaw = plugin.saveData.bind(plugin) as (data: unknown) => Promise<void>;
+		this.after = typeof options.after === 'function' ? options.after : null;
 		// Every product save keeps the hello key. Writes run in sequence with the hello writes.
 		plugin.saveData = (data: unknown) => this.enqueue(() => this.saveRaw(this.withState(data)));
+		// The product's first read marks the point after its own handoff from an earlier instance.
+		let productRead!: () => void;
+		this.productRead = new Promise<void>((resolve) => (productRead = resolve));
+		plugin.loadData = () => {
+			const p = this.loadRaw();
+			void p.then(productRead, productRead);
+			return p;
+		};
 		// Read now, in the queue, before the product's onload can save its settings; decide later.
 		const early = this.enqueue(async (): Promise<Early> => {
 			const data = await this.loadRaw();
@@ -210,6 +249,10 @@ export class HelloController {
 		}
 		this.ready = new Promise<void>((resolve) => plugin.app.workspace.onLayoutReady(() => resolve()))
 			.then(() => early)
+			.then(async (r) => {
+				if (r.ok) await this.productSettled();
+				return r;
+			})
 			.then((r) => this.start(r))
 			.catch((e: unknown) => {
 				console.warn(`${this.pluginName}: the what's new check failed`, e);
@@ -286,47 +329,100 @@ export class HelloController {
 		return p;
 	}
 
+	/** Waits for options.after, else for the product's first loadData() (at most HELLO_PRODUCT_WAIT_MS). Never throws. */
+	private async productSettled(): Promise<void> {
+		if (this.after) {
+			await Promise.resolve()
+				.then(() => this.after?.())
+				.catch(() => undefined);
+			return;
+		}
+		let timer: number | undefined;
+		await Promise.race([this.productRead, new Promise<void>((resolve) => (timer = window.setTimeout(resolve, HELLO_PRODUCT_WAIT_MS)))]);
+		window.clearTimeout(timer);
+	}
+
 	private async start(r: Early): Promise<HelloDecision | null> {
 		if (this.unloaded) return null;
 		if (!r.ok) {
 			// data.json is there but cannot be read: keep the opt-out safe. No tab and no write (the product decides).
 			return { show: false, reason: 'read-error', next: { ...this.state } };
 		}
+		// priorData comes from the early read, before the product could save its first settings.
 		const priorData = r.data !== null && r.data !== undefined;
-		const saved = isRecord(r.data) ? r.data[HELLO_DATA_KEY] : undefined;
 		const storage = this.plugin.app as unknown as VaultStorage;
-		const lastShown = typeof storage.loadLocalStorage === 'function' ? safely(() => storage.loadLocalStorage?.(HELLO_SHARED_KEY)) : null;
-		const decision = decideHello({
-			saved,
-			priorData,
-			current: this.version,
-			hasContent: this.content !== null,
-			lastShown,
-			mobile: Platform.isMobile,
-		});
-		this.state = this.toggled === null ? decision.next : { ...decision.next, show: this.toggled };
-		this.started = true;
-		if (decision.show) {
-			// Claim the shared 14-day slot in the same tick as the read, so a second NoteMods plugin that starts
-			// now sees it. Without the API there is no shared slot, and each plugin still shows at most once per update.
-			const mark: HelloLastShown = { ts: Date.now(), pluginId: this.pluginId, version: this.version };
-			if (typeof storage.saveLocalStorage === 'function') safely(() => storage.saveLocalStorage?.(HELLO_SHARED_KEY, mark));
+		let decision: HelloDecision | null = null;
+		let result: Write;
+		try {
+			// One queue step: read the freshest data.json, decide, and write only when the state changed.
+			result = await this.enqueue(async (): Promise<Write> => {
+				if (this.unloaded) return 'same';
+				const data = await this.loadRaw();
+				const saved = isRecord(data) ? data[HELLO_DATA_KEY] : undefined;
+				this.carried = saved;
+				const lastShown = typeof storage.loadLocalStorage === 'function' ? safely(() => storage.loadLocalStorage?.(HELLO_SHARED_KEY)) : null;
+				decision = decideHello({
+					saved,
+					priorData,
+					current: this.version,
+					hasContent: this.content !== null,
+					lastShown,
+					mobile: Platform.isMobile,
+				});
+				this.state = this.toggled === null ? decision.next : { ...decision.next, show: this.toggled };
+				this.started = true;
+				// Claim the shared 14-day slot in the same tick as its read, so a second NoteMods plugin that starts now
+				// sees it. Without the API there is no shared slot, and each plugin still shows at most once per update.
+				const claim = decision.show && typeof storage.saveLocalStorage === 'function';
+				if (claim) {
+					const mark: HelloLastShown = { ts: Date.now(), pluginId: this.pluginId, version: this.version };
+					safely(() => storage.saveLocalStorage?.(HELLO_SHARED_KEY, mark));
+				}
+				// When the state cannot be saved, no tab opens, so give the slot back to the other plugins.
+				const unclaim = () => {
+					if (claim) safely(() => storage.saveLocalStorage?.(HELLO_SHARED_KEY, lastShown ?? null));
+				};
+				const out = await this.writeState(data, saved).catch((e: unknown) => {
+					unclaim();
+					throw e;
+				});
+				if (out === 'not-object') unclaim();
+				return out;
+			});
+		} catch (e) {
+			// The read or the write failed: the tab stays closed, so it can never open on each start.
+			console.warn(`${this.pluginName}: could not save the what's new setting`, e);
+			const d = decision as HelloDecision | null;
+			return d ? { ...d, show: false } : { show: false, reason: 'read-error', next: { ...this.state } };
 		}
-		// Save first: when the save fails, the tab stays closed, so it can never open on each start.
-		const saved2 = await this.save();
-		if (decision.show && saved2 && !this.unloaded) await this.open(false);
-		return decision;
+		const d = decision as HelloDecision | null;
+		if (!d) return null;
+		// data.json that is not an object cannot hold the state: no tab, or it would open on each start.
+		if (result === 'not-object') return { ...d, show: false };
+		if (d.show && !this.unloaded) await this.open(false);
+		return d;
+	}
+
+	/**
+	 * Writes the state on top of data (just read in the same queue step) and changes only the hello key. Writes
+	 * nothing when the key already holds the state, or when data is not an object (the product owns that format).
+	 */
+	private async writeState(data: unknown, raw: unknown): Promise<Write> {
+		if (sameState(raw, this.state)) return 'same';
+		if (data !== null && data !== undefined && !isRecord(data)) return 'not-object';
+		await this.saveRaw({ ...(isRecord(data) ? data : {}), [HELLO_DATA_KEY]: { ...this.state } });
+		this.carried = { ...this.state };
+		return 'written';
 	}
 
 	/** Writes the state into data.json: reads the file again in the write queue and changes only the hello key. */
 	private async save(): Promise<boolean> {
 		try {
-			await this.enqueue(async () => {
+			const out = await this.enqueue(async () => {
 				const data = await this.loadRaw();
-				const base = isRecord(data) ? data : {};
-				await this.saveRaw({ ...base, [HELLO_DATA_KEY]: { ...this.state } });
+				return this.writeState(data, isRecord(data) ? data[HELLO_DATA_KEY] : undefined);
 			});
-			return true;
+			return out !== 'not-object';
 		} catch (e) {
 			console.warn(`${this.pluginName}: could not save the what's new setting`, e);
 			return false;
@@ -359,8 +455,11 @@ export function renderHelloSettings(containerEl: HTMLElement, hello: HelloContro
 	appendHelloLinks(s.descEl, hello);
 }
 
+/** What the switch does when it is off. The command and the settings button still open the tab. */
+export const HELLO_TOGGLE_OFF = 'Turn off to stop the tab opening by itself. The command still opens it.';
+
 /** The description of the settings toggle. */
-export const HELLO_TOGGLE_DESC = 'After a minor or major update, opens one tab with recent changes in the background. Turn off to never see it.';
+export const HELLO_TOGGLE_DESC = `After a minor or major update, opens one tab with recent changes in the background. ${HELLO_TOGGLE_OFF}`;
 
 /** One line about NoteMods for the settings card. */
 export function helloAboutText(): string {

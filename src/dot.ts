@@ -89,24 +89,104 @@ function endOfHtml(src: string, i: number): number {
 	return src.length;
 }
 
-/** Layout engine and style preset that the author asked for in comment lines such as `// engine: neato`. */
+/** Layout engine, style preset, width and alignment that the author asked for in comment lines such as `// engine: neato`. */
 export interface Directives {
 	engine: string | null;
 	preset: string | null;
+	/** The text after `// width:` as written, trimmed. viewOptions checks it. */
+	width: string | null;
+	/** The text after `// align:` as written, trimmed. viewOptions checks it. */
+	align: string | null;
 }
 
 const DIRECTIVE = /^[ \t]*(?:\/\/|#|\/\*)[ \t]*(engine|layout|preset|style)[ \t]*[:=][ \t]*([A-Za-z][\w-]*)[ \t]*(?:\*\/)?[ \t]*$/;
+const VIEW_DIRECTIVE = /^[ \t]*(?:\/\/|#|\/\*)[ \t]*(width|align)[ \t]*[:=][ \t]*(.*?)[ \t]*(?:\*\/)?[ \t]*$/;
 
-/** Reads `// engine: name` and `// preset: name` from comment lines. The first one of each kind wins. */
+/** Reads `// engine: name`, `// preset: name`, `// width: value` and `// align: value` from comment lines. The first one of each kind wins. */
 export function parseDirectives(src: string): Directives {
-	const out: Directives = { engine: null, preset: null };
+	const out: Directives = { engine: null, preset: null, width: null, align: null };
 	for (const seg of scan(src)) {
 		if (seg.kind !== 'comment') continue;
 		const lineStart = src.lastIndexOf('\n', seg.start - 1) + 1;
-		const m = DIRECTIVE.exec(src.slice(lineStart, seg.end));
+		const line = src.slice(lineStart, seg.end);
+		const view = VIEW_DIRECTIVE.exec(line);
+		if (view) {
+			const key = view[1] === 'width' ? 'width' : 'align';
+			out[key] ??= view[2] ?? '';
+			continue;
+		}
+		const m = DIRECTIVE.exec(line);
 		if (!m) continue;
 		const key = m[1] === 'engine' || m[1] === 'layout' ? 'engine' : 'preset';
 		out[key] ??= (m[2] ?? '').toLowerCase();
+	}
+	return out;
+}
+
+/** Width modes that a setting can hold. A block can also give a percent or a pixel size. */
+export const WIDTH_MODES = ['fit', 'natural'] as const;
+export type WidthMode = (typeof WIDTH_MODES)[number];
+export const ALIGNS = ['left', 'center', 'right'] as const;
+export type Align = (typeof ALIGNS)[number];
+
+export const WIDTH_PERCENT_MIN = 10;
+export const WIDTH_PERCENT_MAX = 100;
+export const WIDTH_PX_MIN = 50;
+export const WIDTH_PX_MAX = 4000;
+
+export function isWidthMode(v: string): v is WidthMode {
+	return (WIDTH_MODES as readonly string[]).includes(v);
+}
+
+export function isAlign(v: string): v is Align {
+	return (ALIGNS as readonly string[]).includes(v);
+}
+
+/** How a diagram sits in the note. `width` is `fit`, `natural`, a percent such as `60%` or a pixel size such as `480px`. */
+export interface ViewOptions {
+	width: string;
+	align: Align;
+	notes: string[];
+}
+
+export interface ViewDefaults {
+	width: WidthMode;
+	align: Align;
+}
+
+/** The checked width text (`fit`, `natural`, `60%`, `480px`), or null when the value is not valid. */
+export function parseWidth(value: string): string | null {
+	const v = value.trim().toLowerCase();
+	if (isWidthMode(v)) return v;
+	const m = /^(\d+(?:\.\d+)?)[ \t]*(%|px)$/.exec(v);
+	if (!m) return null;
+	const n = Number(m[1]);
+	const [lo, hi] = m[2] === '%' ? [WIDTH_PERCENT_MIN, WIDTH_PERCENT_MAX] : [WIDTH_PX_MIN, WIDTH_PX_MAX];
+	return n >= lo && n <= hi ? `${n}${m[2]}` : null;
+}
+
+/**
+ * Width and alignment of a diagram from `// width:` and `// align:` lines. With a `// file:` line, the lines of that file count too,
+ * and lines of the block win over lines of the file. A value that is not valid gives the default and a note.
+ * Graphviz never sees these values: they stay comments, and plan() does not read them.
+ */
+export function viewOptions(block: string, fileText: string | undefined, defaults: ViewDefaults): ViewOptions {
+	const dir = parseDirectives(block);
+	if (fileText !== undefined) {
+		const fromFile = parseDirectives(fileText);
+		dir.width ??= fromFile.width;
+		dir.align ??= fromFile.align;
+	}
+	const out: ViewOptions = { width: defaults.width, align: defaults.align, notes: [] };
+	if (dir.width !== null) {
+		const width = parseWidth(dir.width);
+		if (width === null) out.notes.push(`Unknown width "${dir.width}". Use fit, natural, ${WIDTH_PERCENT_MIN}% to ${WIDTH_PERCENT_MAX}%, or ${WIDTH_PX_MIN}px to ${WIDTH_PX_MAX}px.`);
+		else out.width = width;
+	}
+	if (dir.align !== null) {
+		const align = dir.align.toLowerCase();
+		if (isAlign(align)) out.align = align;
+		else out.notes.push(`Unknown alignment "${dir.align}". Use left, center or right.`);
 	}
 	return out;
 }
