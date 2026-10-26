@@ -3,7 +3,7 @@ import type { SponsorsManager } from './license/index';
 import { createGitHubSponsors } from './license/github-obsidian';
 import { DotBlock } from './block';
 import { LIGHT_PALETTE, sizeProblem, fileProblem, findBlockAt, parseFileDirective, plan as makePlan, type Plan } from './dot';
-import { SPONSORS, bindPro, isPro, onProChange, resetPro } from './pro';
+import { SPONSORS, bindPro, isPro, onProChange, proNotice, resetPro } from './pro';
 import { layoutSvg, readPalette, svgToPng, type Layout } from './render';
 import { DEFAULT_SETTINGS, MAX_CHARS, DotDiagramsSettingTab, normalizeSettings, type DotDiagramsSettings } from './settings';
 import { setupHello } from './hello/index';
@@ -176,7 +176,7 @@ export default class DotDiagramsPlugin extends Plugin {
 	}
 
 	static needsPro(what: string): void {
-		new Notice(`${what} is a Pro feature. Open Settings, DOT Diagrams, and sign in with GitHub Sponsors.`);
+		proNotice(`${what} is a Pro feature.`);
 	}
 
 	/** Pro: draws the block in light colors and saves it as SVG or PNG in the attachment folder of the note. */
