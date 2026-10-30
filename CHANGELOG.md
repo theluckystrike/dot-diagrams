@@ -1,5 +1,11 @@
 # dot-diagrams
 
+## 1.3.2
+
+### Patch Changes
+
+- The Sponsor on GitHub button of DOT Diagrams now opens the one-time payment tab of GitHub Sponsors.
+
 ## 1.3.1
 
 ### Patch Changes
