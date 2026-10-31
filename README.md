@@ -6,7 +6,22 @@ It works in reading view and Live Preview, and the colors follow your theme.
 
 <img src="https://raw.githubusercontent.com/theluckystrike/dot-diagrams/HEAD/docs/dot-diagrams.gif" alt="A note with a dot block drawn as a diagram, then a layout with the neato engine, then a block with a syntax error, then a Pro note whose nodes open other notes" width="720">
 
-Free: offline DOT diagrams, theme colors, line errors. Pro: links between diagram nodes and notes. $15 one time or $5 a month: [Sponsor](https://github.com/sponsors/theluckystrike?metadata_source=dot-diagrams) or [$15 one-time offer](https://github.com/sponsors/theluckystrike/sponsorships?tier_id=666162&metadata_source=dot-diagrams).
+Free: offline DOT diagrams, theme colors, line errors. Pro: links between diagram nodes and notes. $15 one time or $5 a month: [Sponsor](https://github.com/sponsors/theluckystrike?frequency=one-time&metadata_source=dot-diagrams) or [$15 one-time offer](https://github.com/sponsors/theluckystrike/sponsorships?tier_id=666162&metadata_source=dot-diagrams).
+
+## Quick start
+
+Paste this into a note:
+
+~~~markdown
+```dot
+digraph {
+  a -> b -> c;
+  a -> d;
+}
+```
+~~~
+
+Switch to reading view, or move the cursor out of the block in Live Preview. The first diagram must wait for the engine.
 
 ## Features
 
@@ -146,7 +161,7 @@ The Kroki plugin sends your block to a Kroki server, so it needs a network or yo
 
 The core features are free. Pro features need a GitHub Sponsors sponsorship of theluckystrike: $5 a month or more, or $15 once. A total payment of $15 meets the payment requirement for Pro without further payment. Sign-in and the checks below still apply. Your notes stay readable and editable with or without Pro.
 
-GitHub handles the payment. Sponsor at https://github.com/sponsors/theluckystrike. You need no account for the free features. Pro needs the GitHub account that sponsors.
+GitHub handles the payment. Sponsor at https://github.com/sponsors/theluckystrike?frequency=one-time&metadata_source=dot-diagrams. You need no account for the free features. Pro needs the GitHub account that sponsors.
 
 Until you select "Sign in with GitHub" in the settings, DOT Diagrams makes no network requests. Sign in uses the GitHub device flow. DOT Diagrams sends its public client ID and the scope `read:user` to `https://github.com/login/device/code` and shows you a code. While you enter the code at https://github.com/login/device, it asks `https://github.com/login/oauth/access_token` every few seconds to check the sign-in status. The scope permits profile reads only. GitHub needs this access to show the sponsorship tier. It grants no repository scope and no write access.
 
