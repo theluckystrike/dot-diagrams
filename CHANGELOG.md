@@ -1,5 +1,11 @@
 # dot-diagrams
 
+## 1.3.3
+
+### Patch Changes
+
+- In the free version, a layout attribute in the DOT text, such as layout=fdp or graph [layout=fdp], now gets the same check as a // engine: line. A Pro engine name there draws the diagram with the default engine from the settings (dot when that engine needs Pro) and shows a note that names the Pro engine.
+
 ## 1.3.2
 
 ### Patch Changes

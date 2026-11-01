@@ -2,7 +2,7 @@ import { Keymap, Notice, Plugin, TFile, debounce, normalizePath, type Editor, ty
 import type { SponsorsManager } from './license/index';
 import { createGitHubSponsors } from './license/github-obsidian';
 import { DotBlock } from './block';
-import { LIGHT_PALETTE, sizeProblem, fileProblem, findBlockAt, parseFileDirective, plan as makePlan, type Plan } from './dot';
+import { LIGHT_PALETTE, sizeProblem, fileProblem, findBlockAt, graphvizSource, parseFileDirective, plan as makePlan, type Plan } from './dot';
 import { SPONSORS, bindPro, isPro, onProChange, proNotice, resetPro } from './pro';
 import { layoutSvg, readPalette, svgToPng, type Layout } from './render';
 import { DEFAULT_SETTINGS, MAX_CHARS, DotDiagramsSettingTab, normalizeSettings, type DotDiagramsSettings } from './settings';
@@ -115,15 +115,17 @@ export default class DotDiagramsPlugin extends Plugin {
 	/** Plan and layout for a block, with the theme colors read at el. Results are cached by engine and final source. */
 	async layoutFor(source: string, el: HTMLElement, fileText?: string): Promise<Drawn> {
 		const palette = readPalette(el);
-		const plan = makePlan(source, { pro: isPro(), defaultEngine: this.settings.defaultEngine, defaultPreset: this.settings.defaultPreset, palette, fileText });
-		return { plan, layout: await this.cachedLayout(plan, fileText ?? source) };
+		const pro = isPro();
+		const plan = makePlan(source, { pro, defaultEngine: this.settings.defaultEngine, defaultPreset: this.settings.defaultPreset, palette, fileText });
+		return { plan, layout: await this.cachedLayout(plan, fileText ?? source, pro) };
 	}
 
-	private async cachedLayout(plan: Plan, raw: string): Promise<Layout> {
-		const key = `${plan.engine}\u0000${plan.source}`;
+	private async cachedLayout(plan: Plan, raw: string, pro: boolean): Promise<Layout> {
+		const source = graphvizSource(plan, pro);
+		const key = `${plan.engine}\u0000${source}`;
 		const hit = this.cache.get(key);
 		if (hit) return hit;
-		const layout = await layoutSvg(plan.source, plan.engine, raw);
+		const layout = await layoutSvg(source, plan.engine, raw);
 		if (this.cache.size >= CACHE_MAX) this.cache.delete(this.cache.keys().next().value as string);
 		this.cache.set(key, layout);
 		return layout;
@@ -141,8 +143,9 @@ export default class DotDiagramsPlugin extends Plugin {
 			new Notice(`DOT diagram error: ${problem}`);
 			return null;
 		}
+		const pro = isPro();
 		const plan = makePlan(source, {
-			pro: isPro(),
+			pro,
 			defaultEngine: this.settings.defaultEngine,
 			defaultPreset: this.settings.defaultPreset,
 			palette: LIGHT_PALETTE,
@@ -152,7 +155,7 @@ export default class DotDiagramsPlugin extends Plugin {
 		});
 		let layout: Layout;
 		try {
-			layout = await this.cachedLayout(plan, block.text);
+			layout = await this.cachedLayout(plan, block.text, pro);
 		} catch (e) {
 			new Notice(`DOT diagram error: Graphviz did not load: ${e instanceof Error ? e.message : String(e)}`);
 			return null;

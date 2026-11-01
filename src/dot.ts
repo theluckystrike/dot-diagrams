@@ -231,6 +231,79 @@ export function resolveEngine(requested: string | null, fallback: Engine, pro: b
 	return { engine: requested, note: null };
 }
 
+interface Tok {
+	text: string;
+	kind: 'id' | 'punct';
+}
+
+/** The text of a quoted DOT string: `\"` gives `"`, and a backslash before a line break joins the two lines, as Graphviz reads it. */
+function unquote(raw: string): string {
+	const inner = raw.slice(1, raw.length > 1 && raw.endsWith('"') ? -1 : undefined);
+	return inner.replace(/\\\r?\n/g, '').replace(/\\"/g, '"');
+}
+
+/** IDs and punctuation of DOT code. Comments are dropped. `"a" + "b"` gives one ID, as in Graphviz. */
+function tokens(src: string): Tok[] {
+	const out: Tok[] = [];
+	let joinNext = false;
+	for (const seg of scan(src)) {
+		const text = src.slice(seg.start, seg.end);
+		if (seg.kind === 'comment') continue;
+		if (seg.kind === 'string') {
+			const value = unquote(text);
+			const last = out[out.length - 1];
+			if (joinNext && last) last.text += value;
+			else out.push({ text: value, kind: 'id' });
+			joinNext = false;
+			continue;
+		}
+		if (seg.kind === 'html') {
+			out.push({ text: text.slice(1, -1), kind: 'id' });
+			joinNext = false;
+			continue;
+		}
+		for (const m of text.matchAll(/->|--|[\w.\u0080-￿]+|\S/g)) {
+			const t = m[0];
+			if (t === '+' && out[out.length - 1]?.kind === 'id') {
+				joinNext = true;
+				continue;
+			}
+			joinNext = false;
+			out.push({ text: t, kind: t === '->' || t === '--' || !/^[\w.\u0080-￿]/.test(t) ? 'punct' : 'id' });
+		}
+	}
+	return out;
+}
+
+/**
+ * The value of the `layout` attribute of the root graph, or null. Graphviz reads this attribute and then ignores the engine
+ * that the plugin gives it. A `layout=x` statement and a `graph [layout=x]` list in the root graph count; the last one wins.
+ * Lists on nodes and edges and the lines of subgraphs do not count, because Graphviz reads only the root graph.
+ */
+export function layoutAttribute(src: string): string | null {
+	const toks = tokens(src);
+	let depth = 0;
+	let list: 'graph' | 'other' | null = null;
+	let value: string | null = null;
+	for (let i = 0; i < toks.length; i++) {
+		const t = toks[i];
+		if (!t) continue;
+		if (t.kind === 'punct') {
+			if (t.text === '{' && list === null) depth++;
+			else if (t.text === '}' && list === null) depth--;
+			else if (t.text === '[' && list === null) list = toks[i - 1]?.text.toLowerCase() === 'graph' ? 'graph' : 'other';
+			else if (t.text === ']') list = null;
+			continue;
+		}
+		const eq = toks[i + 1];
+		const val = toks[i + 2];
+		if (t.text !== 'layout' || eq?.text !== '=' || eq.kind !== 'punct' || val?.kind !== 'id') continue;
+		if (depth === 1 && list !== 'other') value = val.text;
+		i += 2;
+	}
+	return value;
+}
+
 export type AttrMap = Record<string, string>;
 export interface Defaults {
 	graph: AttrMap;
@@ -615,7 +688,9 @@ export function plan(block: string, o: PlanOptions): Plan {
 		dir.preset ??= fromFile.preset;
 	}
 	const notes: string[] = [];
-	const choice = resolveEngine(dir.engine, o.defaultEngine, o.pro);
+	// Graphviz uses a `layout` attribute of the graph before the engine that it gets. For a free user, that attribute goes through the same gate as the comment line.
+	const attr = o.pro ? null : layoutAttribute(raw);
+	const choice = resolveEngine(attr ?? dir.engine, o.defaultEngine, o.pro);
 	if (choice.note) notes.push(choice.note);
 	const wanted = dir.preset ?? (o.defaultPreset || null);
 	let preset: string | null = null;
@@ -625,6 +700,15 @@ export function plan(block: string, o: PlanOptions): Plan {
 	const mapped = mapWikilinks(raw, o.links ?? o.pro);
 	const source = insertAfterOpener(mapped.source, defaultsText(buildDefaults(o.palette, preset, o.background)));
 	return { source, engine: choice.engine, preset, notes, links: mapped.links };
+}
+
+/**
+ * The text that Graphviz gets for a plan. For a free user, the last statement of the root graph sets the engine of the plan.
+ * The last value wins in Graphviz, so no `layout` text of the author can replace it, also a form that layoutAttribute does not read.
+ * Pass the same pro value that made the plan.
+ */
+export function graphvizSource(p: Plan, pro: boolean): string {
+	return pro ? p.source : insertBeforeCloser(p.source, `layout="${p.engine}";`);
 }
 
 /** CSS color text such as `rgb(218, 218, 218)`, `rgba(0, 0, 0, 0.5)` or `#abc` as `#rrggbb` or `#rrggbbaa`. Null when it does not parse. */

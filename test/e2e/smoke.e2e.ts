@@ -251,6 +251,26 @@ describe(`${pluginId} in the real app`, function () {
 			expect(s.notes.join(' ')).toContain('fdp layout engine is a Pro feature');
 		});
 
+		it('uses dot for a Pro engine in a layout attribute and says so; Pro gets the fdp layout (s1101)', async function () {
+			const graph = 'a -- b -- c -- a; c -- d; d -- e; e -- a;';
+			const centers = (svg: string) => Array.from(svg.matchAll(/<ellipse[^>]*?cx="([-\d.]+)" cy="([-\d.]+)"/g)).map((m) => `${m[1]},${m[2]}`);
+			await openBlock('Layout plain', `graph { ${graph} }`, 'preview');
+			const plain = await waitFor((x) => x.nodes === 5 && x.notes.length === 0, 'no svg for the plain block');
+			await openBlock('Layout attribute free', `graph {\n  graph [layout=fdp];\n  ${graph}\n}`, 'preview');
+			const free = await waitFor((x) => x.nodes === 5 && x.notes.length > 0, 'no svg or no note for the layout=fdp block');
+			expect(free.notes.join(' ')).toContain('fdp layout engine is a Pro feature');
+			expect(centers(free.svgText)).toEqual(centers(plain.svgText));
+			await setPro(true);
+			try {
+				await openBlock('Layout attribute pro', `graph {\n  graph [layout=fdp];\n  ${graph}\n}`, 'preview');
+				const pro = await waitFor((x) => x.nodes === 5 && x.notes.length === 0, 'no svg for the Pro layout=fdp block');
+				expect(centers(pro.svgText).length).toBe(5);
+				expect(centers(pro.svgText)).not.toEqual(centers(plain.svgText));
+			} finally {
+				await setPro(false);
+			}
+		});
+
 		it('draws neato and circo for free', async function () {
 			for (const engine of ['neato', 'circo']) {
 				await openBlock(`Engine ${engine}`, `// engine: ${engine}\ngraph { a -- b -- c -- a }`, 'preview');

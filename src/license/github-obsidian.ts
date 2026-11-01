@@ -334,3 +334,6 @@ export function redrawKeepFocus(tab: { containerEl: HTMLElement; update(): void 
 	const control = target?.querySelectorAll<HTMLElement>(FOCUS_CONTROLS)[controlIndex];
 	control?.focus({ preventScroll: true });
 }
+
+// The "What Pro adds" window (what-pro.ts) is part of this entry.
+export * from './what-pro';
