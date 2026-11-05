@@ -4,8 +4,8 @@
 // It never opens by itself. Only a command, a button in the settings or the link in the Pro notice opens it.
 // A demo runs only after a click on "Try it", draws into the window and never writes to a vault file.
 import { Modal, Setting, type App, type Notice, type SettingDefinition, type SettingDefinitionItem } from 'obsidian';
-import { sponsorUrl, type SponsorsConfig } from './github';
-import { fillAccountSetting, proNoticeKind, showProNotice, sponsorsSettingItems, type SponsorsUiOptions } from './github-obsidian';
+import { COPY_TAG, sponsorUrl, type SponsorsConfig } from './github';
+import { CATALOG_TEXT, fillAccountSetting, proNoticeKind, showProNotice, sponsorsSettingItems, type SponsorsUiOptions } from './github-obsidian';
 import type { SponsorsManager } from './sponsors';
 
 /** One Pro feature of a plugin. */
@@ -27,7 +27,7 @@ export interface WhatProDemoFeature extends WhatProFeature {
 }
 
 export interface WhatProConfig {
-	/** The plugin id. The Sponsor URL gets metadata_source=<plugin id>-whatpro. */
+	/** The plugin id. The Sponsor URL gets metadata_source=<plugin id>-whatpro-<COPY_TAG>. */
 	pluginId: string;
 	/** The plugin name, for the title. */
 	pluginName: string;
@@ -48,9 +48,12 @@ export function whatProSource(pluginId: string): string {
 	return `${pluginId}-${WHAT_PRO_TAG}`;
 }
 
-/** The Sponsor URL of this window. Same form as sponsorUrl (and tools/pro.mjs), with metadata_source=<plugin id>-whatpro. */
+/**
+ * The Sponsor URL of this window. Same form as sponsorUrl (and tools/pro.mjs), with
+ * metadata_source=<plugin id>-whatpro-<COPY_TAG>, for example search-operators-whatpro-all (see COPY_TAG in github.ts).
+ */
 export function whatProUrl(config: SponsorsConfig, pluginId: string): string {
-	return sponsorUrl({ ...config, source: whatProSource(pluginId) });
+	return sponsorUrl({ ...config, source: whatProSource(pluginId) }, COPY_TAG);
 }
 
 /** The label of the Sponsor button: the one-time price when a one-time sponsorship unlocks Pro. */
@@ -73,6 +76,8 @@ export interface WhatProModel {
 	lines: string[];
 	/** null when the window must not show a price. */
 	priceText: string | null;
+	/** CATALOG_TEXT after the price; null when the window must not show a price. */
+	catalogText: string | null;
 	sponsorText: string | null;
 	sponsorUrl: string | null;
 	/** Show the GitHub account row (Sign in with GitHub, or Refresh and Sign out). */
@@ -95,6 +100,7 @@ export function whatProModel(pro: SponsorsManager | null, cfg: Pick<WhatProConfi
 		status: WHAT_PRO_STATUS[state],
 		lines: cfg.features.map((f) => f.line),
 		priceText: pitch ? cfg.priceText : null,
+		catalogText: pitch ? CATALOG_TEXT : null,
 		sponsorText: pitch ? sponsorButtonText(sponsors) : null,
 		sponsorUrl: pitch ? whatProUrl(sponsors, cfg.pluginId) : null,
 		account: pro !== null && state !== 'active',
@@ -164,7 +170,7 @@ export class WhatProModal extends Modal {
 			const url = model.sponsorUrl;
 			new Setting(contentEl)
 				.setName('Price')
-				.setDesc(model.priceText)
+				.setDesc(model.catalogText ? `${model.priceText} ${model.catalogText}` : model.priceText)
 				.setClass('pf-whatpro-price')
 				.addButton((b) =>
 					b

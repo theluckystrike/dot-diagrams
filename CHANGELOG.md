@@ -1,5 +1,11 @@
 # dot-diagrams
 
+## 1.3.4
+
+### Patch Changes
+
+- The Pro notice of DOT Diagrams now says that one payment turns on Pro in every NoteMods plugin.
+
 ## 1.3.3
 
 ### Patch Changes

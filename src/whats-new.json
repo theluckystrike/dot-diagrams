@@ -1,9 +1,9 @@
 {
 	"id": "dot-diagrams",
 	"name": "DOT Diagrams",
-	"version": "1.3.3",
+	"version": "1.3.4",
 	"changes": [
-		"In the free version, a layout attribute in the DOT text, such as layout=fdp, now gets the same check as a // engine: line. A Pro engine name there draws with the default engine from the settings (dot when that engine needs Pro) and shows a note."
+		"The Pro notice of DOT Diagrams now says that one payment turns on Pro in every NoteMods plugin."
 	],
 	"tip": "Add '// engine: neato' to a dot block to use a spring layout.",
 	"thanks": "Hi, I am Michael, a solo developer in Poland. DOT Diagrams is one of over 100 small plugins that I make. Thank you for keeping it in your editor.",

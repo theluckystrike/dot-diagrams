@@ -121,7 +121,7 @@ After a minor or major update, this plugin opens one What's new tab in the backg
 
 | Setting | What it does |
 | --- | --- |
-| Default layout engine | The engine for blocks without an `// engine:` line. Default `dot`. fdp, sfdp, twopi and osage need Pro. |
+| Default layout engine | The engine for blocks without an `// engine:` line. Default `dot`. |
 | Default style preset | Pro. The preset for blocks without a `// preset:` line. Empty means the theme colors. |
 | Default diagram width | For blocks without a `// width:` line. Fit (default) or natural. |
 | Default alignment | For blocks without an `// align:` line. Left, center (default) or right. |
@@ -129,7 +129,7 @@ After a minor or major update, this plugin opens one What's new tab in the backg
 | Edge limit | A block with more edges is not drawn. From 50 to 20,000, default 300. |
 | PNG export scale | Pro. 1 to 4 times the size at 96 dpi, default 2. |
 
-The settings tab also has the Pro section: sign in, the status line and Refresh.
+The Pro section in settings has sign in, status and Refresh.
 
 ## FAQ
 
@@ -160,6 +160,8 @@ The Kroki plugin sends your block to a Kroki server, so it needs a network or yo
 ## Payment, account and network
 
 The core features are free. Pro features need a GitHub Sponsors sponsorship of theluckystrike: $5 a month or more, or $15 once. A total payment of $15 meets the payment requirement for Pro without further payment. Sign-in and the checks below still apply. Your notes stay readable and editable with or without Pro.
+
+[One payment turns on Pro in every NoteMods plugin](https://notemods.com/pro/).
 
 GitHub handles the payment. Sponsor at https://github.com/sponsors/theluckystrike?frequency=one-time&metadata_source=dot-diagrams. You need no account for the free features. Pro needs the GitHub account that sponsors.
 

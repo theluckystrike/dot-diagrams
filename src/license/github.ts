@@ -54,18 +54,34 @@ export function isWellFormedToken(token: string): boolean {
 }
 
 /**
+ * The copy cohort tag. The Pro surfaces of github-obsidian.ts and what-pro.ts pass it to sponsorUrl, which adds it at
+ * the end of metadata_source. So the Sponsors CSV (metadata column) separates the payments of each copy. Change it each
+ * time the shared in-app Pro copy changes. Values in the export:
+ *  - <plugin id>             Pro notice or settings "Get pro" row, copy before s1105 (no catalog sentence).
+ *  - <plugin id>-whatpro     "What Pro adds" window, copy before s1105.
+ *  - <plugin id>-all         Pro notice or settings "Get pro" row with CATALOG_TEXT (s1105 and later).
+ *  - <plugin id>-whatpro-all "What Pro adds" window with CATALOG_TEXT (s1105 and later).
+ * A plugin with its own adapter (secret-parcel) and the README links of tools/pro.mjs pass no tag: <plugin id> only.
+ * A filter on "-whatpro" still finds each payment from the window. A value that ends in "-all" is the new copy.
+ */
+export const COPY_TAG = 'all';
+
+/**
  * The Sponsors profile URL. With cfg.source it adds metadata_source, which GitHub puts in the metadata column of the
  * transaction export. GitHub accepts only letters, digits, dashes and underscores, at most 100 characters per value,
  * and answers 404 for other characters (docs.github.com/en/sponsors, "Viewing your sponsors and sponsorships").
+ * With copyTag the value is <source>-<copyTag>. The source is cut first, so the tag is never cut.
  * When a one-time sponsorship unlocks Pro (cfg.oneTimeUsd > 0) it adds frequency=one-time. Without it GitHub opens the
  * monthly tab, and the one-time tiers stay behind a toggle (checked live 2026-10-30).
  */
-export function sponsorUrl(cfg: SponsorsConfig): string {
+export function sponsorUrl(cfg: SponsorsConfig, copyTag?: string): string {
 	const base = `https://github.com/sponsors/${cfg.sponsorLogin}`;
-	const source = (cfg.source ?? '').replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 100);
+	const clean = (v: string) => v.replace(/[^A-Za-z0-9_-]/g, '-');
+	const tag = /[A-Za-z0-9]/.test(clean(copyTag ?? '')) ? `-${clean(copyTag ?? '')}` : '';
+	const source = clean(cfg.source ?? '');
 	const params: string[] = [];
 	if (cfg.oneTimeUsd > 0) params.push('frequency=one-time');
-	if (/[A-Za-z0-9]/.test(source)) params.push(`metadata_source=${source}`);
+	if (/[A-Za-z0-9]/.test(source)) params.push(`metadata_source=${`${source.slice(0, Math.max(0, 100 - tag.length))}${tag}`.slice(0, 100)}`);
 	return params.length > 0 ? `${base}?${params.join('&')}` : base;
 }
 
