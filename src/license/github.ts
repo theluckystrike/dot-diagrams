@@ -61,26 +61,42 @@ export function isWellFormedToken(token: string): boolean {
  *  - <plugin id>-whatpro     "What Pro adds" window, copy before s1105.
  *  - <plugin id>-all         Pro notice or settings "Get pro" row with CATALOG_TEXT (s1105 and later).
  *  - <plugin id>-whatpro-all "What Pro adds" window with CATALOG_TEXT (s1105 and later).
- * A plugin with its own adapter (secret-parcel) and the README links of tools/pro.mjs pass no tag: <plugin id> only.
+ * The secret-parcel adapter passes the tag too. The README links of tools/pro.mjs pass no tag: <plugin id> only.
  * A filter on "-whatpro" still finds each payment from the window. A value that ends in "-all" is the new copy.
  */
 export const COPY_TAG = 'all';
 
 /**
- * The Sponsors profile URL. With cfg.source it adds metadata_source, which GitHub puts in the metadata column of the
+ * The NoteMods one-time tier: $15 once, lifetime Pro (tier_id 666162 of theluckystrike). The tier id is the last
+ * 4 bytes of the GraphQL SponsorsTier node id ST_kwDOAwq1PM4ACioy, checked 2026-11-13 (s1113a lanes/L1/tiers-decoded.tsv).
+ * The profile URL shows 10 one-time tiers and 9 of them are not NoteMods (s1112a lanes/F1/funnel.md), so the Sponsor
+ * button opens this tier directly, in the same form as the notemods.com /pro/ links.
+ */
+export const ONE_TIME_TIER = { login: 'theluckystrike', tierId: 666162, usd: 15 } as const;
+
+/**
+ * The Sponsor URL. With cfg.source it adds metadata_source, which GitHub puts in the metadata column of the
  * transaction export. GitHub accepts only letters, digits, dashes and underscores, at most 100 characters per value,
  * and answers 404 for other characters (docs.github.com/en/sponsors, "Viewing your sponsors and sponsorships").
  * With copyTag the value is <source>-<copyTag>. The source is cut first, so the tag is never cut.
  * When a one-time sponsorship unlocks Pro (cfg.oneTimeUsd > 0) it adds frequency=one-time. Without it GitHub opens the
  * monthly tab, and the one-time tiers stay behind a toggle (checked live 2026-10-30).
+ * When the seller is ONE_TIME_TIER.login and the tier price meets cfg.oneTimeUsd, the URL opens that tier:
+ * https://github.com/sponsors/theluckystrike/sponsorships?tier_id=666162&frequency=one-time&metadata_source=<source>.
+ * Logged out, GitHub sends it to github.com/login with return_to that keeps every parameter (checked live 2026-11-13).
+ * Another seller, or a one-time price above the tier, keeps the profile URL with frequency=one-time.
  */
 export function sponsorUrl(cfg: SponsorsConfig, copyTag?: string): string {
-	const base = `https://github.com/sponsors/${cfg.sponsorLogin}`;
+	const profile = `https://github.com/sponsors/${cfg.sponsorLogin}`;
 	const clean = (v: string) => v.replace(/[^A-Za-z0-9_-]/g, '-');
 	const tag = /[A-Za-z0-9]/.test(clean(copyTag ?? '')) ? `-${clean(copyTag ?? '')}` : '';
 	const source = clean(cfg.source ?? '');
+	const oneTime = cfg.oneTimeUsd > 0;
+	const tier = oneTime && cfg.sponsorLogin.toLowerCase() === ONE_TIME_TIER.login && cfg.oneTimeUsd <= ONE_TIME_TIER.usd;
+	const base = tier ? `${profile}/sponsorships` : profile;
 	const params: string[] = [];
-	if (cfg.oneTimeUsd > 0) params.push('frequency=one-time');
+	if (tier) params.push(`tier_id=${ONE_TIME_TIER.tierId}`);
+	if (oneTime) params.push('frequency=one-time');
 	if (/[A-Za-z0-9]/.test(source)) params.push(`metadata_source=${`${source.slice(0, Math.max(0, 100 - tag.length))}${tag}`.slice(0, 100)}`);
 	return params.length > 0 ? `${base}?${params.join('&')}` : base;
 }

@@ -49,7 +49,7 @@ export function whatProSource(pluginId: string): string {
 }
 
 /**
- * The Sponsor URL of this window. Same form as sponsorUrl (and tools/pro.mjs), with
+ * The Sponsor URL of this window. Same form as sponsorUrl (the NoteMods one-time tier when it applies), with
  * metadata_source=<plugin id>-whatpro-<COPY_TAG>, for example search-operators-whatpro-all (see COPY_TAG in github.ts).
  */
 export function whatProUrl(config: SponsorsConfig, pluginId: string): string {
